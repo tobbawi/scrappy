@@ -100,7 +100,7 @@ def run_scrape_job(job_id: str, company_id: Optional[str]):
             return
 
         job.status = "running"
-        job.started_at = datetime.utcnow()
+        job.started_at = datetime.now(timezone.utc)
         session.add(job)
         session.commit()
 
@@ -216,7 +216,7 @@ def run_scrape_job(job_id: str, company_id: Optional[str]):
 
                     session.commit()
                     company.scrape_status = "success"
-                    company.last_scraped_at = datetime.utcnow()
+                    company.last_scraped_at = datetime.now(timezone.utc)
                     company.error_message = None
                     bus.emit({
                         "type": "company_done",
@@ -247,7 +247,7 @@ def run_scrape_job(job_id: str, company_id: Optional[str]):
             bus.emit({"type": "job_failed", "error": str(e)})
 
         finally:
-            job.finished_at = datetime.utcnow()
+            job.finished_at = datetime.now(timezone.utc)
             # Persist the log
             events, _ = bus.snapshot()
             job.log = json.dumps([json.loads(e) for e in events])

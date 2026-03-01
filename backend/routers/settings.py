@@ -43,7 +43,7 @@ def list_ollama_models(session: Session = Depends(get_session)):
         r = httpx.get(f"{settings.ollama_base_url}/api/tags", timeout=5)
         r.raise_for_status()
         models = [m["name"] for m in r.json().get("models", [])]
-        return {"models": models, "reachable": True}
+        return {"models": models, "reachable": True, "error": None}
     except Exception as e:
         return {"models": [], "reachable": False, "error": str(e)}
 

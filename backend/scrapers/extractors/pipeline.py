@@ -14,7 +14,7 @@ def detect_ollama(base_url: str = "http://localhost:11434", timeout: int = 60) -
     """
     import httpx
     try:
-        r = httpx.get(f"{base_url}/api/tags", timeout=2)
+        r = httpx.get(f"{base_url}/api/tags", timeout=5)
         if r.status_code != 200:
             return None
         models = [m["name"] for m in r.json().get("models", [])]

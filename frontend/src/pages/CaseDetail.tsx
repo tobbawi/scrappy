@@ -26,7 +26,7 @@ function ContentSection({ label, value, borderColor }: ContentSectionProps) {
 
 export function CaseDetail() {
   const { id } = useParams<{ id: string }>();
-  const { data: c, isLoading } = useCase(id!);
+  const { data: c, isLoading } = useCase(id ?? "");
   const [showRaw, setShowRaw] = useState(false);
 
   if (isLoading) return <div className="p-6 text-muted-foreground">Loading…</div>;

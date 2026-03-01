@@ -1,6 +1,10 @@
-from datetime import datetime, date
+from datetime import datetime, date, timezone
 from typing import Optional
 from sqlmodel import SQLModel, Field
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 class Company(SQLModel, table=True):
@@ -10,7 +14,7 @@ class Company(SQLModel, table=True):
     fetcher_type: str = "static"  # static | dynamic | stealthy
     case_path_prefix: Optional[str] = None  # e.g. "/customers/"
     active: bool = True
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=_utcnow)
     last_scraped_at: Optional[datetime] = None
     scrape_status: str = "idle"  # idle | running | error | success
     error_message: Optional[str] = None
@@ -34,8 +38,8 @@ class ReferenceCase(SQLModel, table=True):
     quote_author_company: Optional[str] = None
     publish_date: Optional[date] = None
     tags: Optional[str] = None  # JSON array
-    first_seen: datetime = Field(default_factory=datetime.utcnow)
-    last_checked: datetime = Field(default_factory=datetime.utcnow)
+    first_seen: datetime = Field(default_factory=_utcnow)
+    last_checked: datetime = Field(default_factory=_utcnow)
     content_hash: str
     raw_text: Optional[str] = None  # stored for future LLM extraction
 

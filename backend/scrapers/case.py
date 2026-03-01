@@ -1,5 +1,5 @@
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from .fetcher import fetch
 from .extractors.pipeline import ExtractionPipeline
@@ -19,7 +19,7 @@ def build_case_from_data(data: dict, company_id: str, html: str) -> Optional[Ref
     url = data.get("url")
     if not url:
         return None
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     return ReferenceCase(
         id=_make_id(url),
         company_id=company_id,
@@ -56,7 +56,7 @@ def scrape_case(url: str, company_id: str, fetcher_type: str = "static") -> Opti
     pipeline = ExtractionPipeline()
     data = pipeline.run(html, url)
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     return ReferenceCase(
         id=_make_id(url),

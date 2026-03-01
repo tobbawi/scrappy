@@ -98,11 +98,17 @@ class LLMExtractor(BaseExtractor):
             r.raise_for_status()
             body = r.json()
 
-        content = body["message"]["content"]
+        content = body["message"]["content"].strip()
         # Strip markdown code fences if model ignores format directive
-        content = content.strip()
         if content.startswith("```"):
-            content = content.split("```")[1]
-            if content.startswith("json"):
-                content = content[4:]
-        return json.loads(content)
+            parts = content.split("```")
+            if len(parts) >= 2:
+                content = parts[1]
+                if content.startswith("json"):
+                    content = content[4:]
+                content = content.strip()
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError as e:
+            print(f"[LLMExtractor] JSON parse failed: {e} — raw: {content[:200]}")
+            return {}

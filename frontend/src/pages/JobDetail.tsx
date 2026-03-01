@@ -324,7 +324,7 @@ export function JobDetail() {
           </span>
         )}
         {events.map((event, i) => (
-          <LogRow key={i} event={event} />
+          <LogRow key={`${event.ts}-${i}`} event={event} />
         ))}
       </div>
 

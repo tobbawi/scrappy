@@ -2,7 +2,7 @@ from math import ceil
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlmodel import Session, select, func
 from slugify import slugify
-from datetime import datetime
+from datetime import datetime, timezone
 
 from database import get_session
 from models import Company
@@ -43,7 +43,7 @@ def create_company(data: CompanyCreate, session: Session = Depends(get_session))
         fetcher_type=data.fetcher_type,
         case_path_prefix=data.case_path_prefix,
         active=data.active,
-        created_at=datetime.utcnow(),
+        created_at=datetime.now(timezone.utc),
     )
     session.add(company)
     session.commit()

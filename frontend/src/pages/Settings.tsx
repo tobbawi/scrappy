@@ -37,8 +37,8 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 
 export function Settings() {
   const { data: settings, isLoading } = useSettings();
-  const { mutate: updateSettings, isPending: isSaving } = useUpdateSettings();
-  const { data: modelsData, refetch: refetchModels, isFetching: isFetchingModels } = useOllamaModels();
+  const { mutate: updateSettings, isPending: isSaving, error: saveError } = useUpdateSettings();
+  const { data: modelsData, refetch: refetchModels, isFetching: isFetchingModels, error: modelsError } = useOllamaModels();
   const { mutate: testOllama, isPending: isTesting, data: testResult } = useOllamaTest();
 
   const [baseUrl, setBaseUrl] = useState("");
@@ -102,11 +102,11 @@ export function Settings() {
                   {isFetchingModels ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                 </Button>
               </div>
-              {modelsData && (
+              {(modelsData || modelsError) && (
                 <div className="flex items-center gap-1.5 text-xs mt-1">
-                  {modelsData.reachable
+                  {modelsData?.reachable
                     ? <><CheckCircle className="h-3.5 w-3.5 text-green-600" /><span className="text-green-700">Ollama reachable · {availableModels.length} model(s) found</span></>
-                    : <><XCircle className="h-3.5 w-3.5 text-destructive" /><span className="text-destructive">{modelsData.error ?? "Cannot reach Ollama"}</span></>
+                    : <><XCircle className="h-3.5 w-3.5 text-destructive" /><span className="text-destructive">{modelsData?.error ?? (modelsError instanceof Error ? modelsError.message : "Cannot reach Ollama")}</span></>
                   }
                 </div>
               )}
@@ -150,6 +150,9 @@ export function Settings() {
               <p className="text-xs text-muted-foreground">LLM call timeout per case page. Increase for slower hardware.</p>
             </div>
 
+            {saveError && (
+              <p className="text-sm text-destructive">{saveError instanceof Error ? saveError.message : "Save failed"}</p>
+            )}
             <div className="flex items-center gap-2 pt-1">
               <Button size="sm" onClick={handleSaveOllama} disabled={isSaving}>
                 {isSaving ? "Saving…" : "Save"}

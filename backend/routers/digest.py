@@ -1,6 +1,6 @@
 import html as html_lib
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from fastapi.responses import HTMLResponse, PlainTextResponse
@@ -82,7 +82,7 @@ def get_digest(
     if since:
         since_dt = datetime.fromisoformat(since)
     else:
-        since_dt = datetime.utcnow() - timedelta(days=7)
+        since_dt = datetime.now(timezone.utc) - timedelta(days=7)
 
     data = _build_digest_data(session, since_dt)
 
@@ -120,7 +120,7 @@ def get_stats(session: Session = Depends(get_session)):
     ).one()
     total_cases = session.exec(select(func.count(ReferenceCase.id))).one()
 
-    week_ago = datetime.utcnow() - timedelta(days=7)
+    week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     new_cases_this_week = session.exec(
         select(func.count(ReferenceCase.id)).where(ReferenceCase.first_seen >= week_ago)
     ).one()
