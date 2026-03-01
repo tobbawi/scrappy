@@ -1,5 +1,7 @@
 # Scrappy — Reference Case Tracker
 
+[![GitHub](https://img.shields.io/badge/GitHub-tobbawi%2Fscrappy-blue?logo=github)](https://github.com/tobbawi/scrappy)
+
 A local web application to track reference cases (customer success stories) published by company websites.
 
 ## Quick Start
