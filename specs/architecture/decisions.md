@@ -241,3 +241,27 @@ maximum `per_page=200`. This mirrors the existing `PaginatedCases` pattern.
 - Frontend (`useCompanies`, `Companies.tsx`, `Cases.tsx`) updated accordingly.
 - Default page size (100) comfortably covers the expected company count without
   requiring clients to implement pagination for the common case.
+
+---
+
+## ADR-014 — Scraper Field Config Stored as JSON Strings in AppSettings
+
+**Date:** 2026-03-01
+
+**Context:** Users need the ability to disable specific extracted fields and add extra
+heuristic section-header keywords without requiring a DB schema change per field.
+
+**Decision:** Store `scraper_enabled_fields` (list of disabled field names) and
+`scraper_heuristic_labels` (field → keyword list map) as TEXT columns containing
+JSON. Serialization/deserialization happens in the settings router; the API surfaces
+them as proper JSON types (`list[str]` and `dict`). The `HeuristicExtractor` accepts
+`custom_labels` at construction time and merges them into its section-label tables
+without mutating module-level constants.
+
+**Consequences:**
+- No new DB tables required; two TEXT columns on the existing singleton row.
+- Column migration (ALTER TABLE) runs safely at startup alongside existing migrations.
+- `SettingsRead` cannot use `from_attributes = True` for these fields; the router
+  constructs the response explicitly via `_settings_to_read()`.
+- Pipeline accepts a `scraper_config` dict; disabled fields are nulled out *after*
+  all extractors run, giving extractors no special-casing.

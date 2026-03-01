@@ -47,6 +47,21 @@ SECTION_LABELS: dict[str, list[str]] = {
 class HeuristicExtractor(BaseExtractor):
     """Fallback extractor using HTML structure heuristics."""
 
+    def __init__(self, custom_labels: dict[str, list[str]] | None = None):
+        # Copy module-level SECTION_LABELS so we can extend without mutation
+        self._section_labels: dict[str, list[str]] = {
+            k: list(v) for k, v in SECTION_LABELS.items()
+        }
+        if custom_labels:
+            for field, extra in custom_labels.items():
+                if field in self._section_labels:
+                    self._section_labels[field] = self._section_labels[field] + [
+                        lbl.lower() for lbl in extra
+                    ]
+                elif extra:
+                    # Field not in built-in labels (e.g. tags) — store separately
+                    self._section_labels[field] = [lbl.lower() for lbl in extra]
+
     def extract(self, soup: BeautifulSoup, data: dict) -> dict:
         self._extract_title(soup, data)
         self._extract_customer_name(soup, data)
@@ -132,10 +147,10 @@ class HeuristicExtractor(BaseExtractor):
     # ── Challenge / Solution / Results ─────────────────────────────────────
 
     def _extract_challenge(self, soup: BeautifulSoup, data: dict):
-        self._extract_section(soup, data, "challenge", SECTION_LABELS["challenge"])
+        self._extract_section(soup, data, "challenge", self._section_labels["challenge"])
 
     def _extract_solution(self, soup: BeautifulSoup, data: dict):
-        self._extract_section(soup, data, "solution", SECTION_LABELS["solution"])
+        self._extract_section(soup, data, "solution", self._section_labels["solution"])
 
     def _extract_results(self, soup: BeautifulSoup, data: dict):
         if data.get("results"):
@@ -151,7 +166,7 @@ class HeuristicExtractor(BaseExtractor):
                     return
 
         # 2. Section label / heading approach
-        self._extract_section(soup, data, "results", SECTION_LABELS["results"])
+        self._extract_section(soup, data, "results", self._section_labels["results"])
 
     def _extract_section(self, soup: BeautifulSoup, data: dict, key: str, labels: list[str]):
         """Find a section label element, then collect the content that follows it."""

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { formatDate, truncate, parseTags, isNewThisWeek } from "@/lib/utils";
+import { formatDate, truncate, parseTags, isNewThisWeek, computeQualityScore } from "@/lib/utils";
 import { Search, ExternalLink } from "lucide-react";
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -239,6 +239,11 @@ export function Cases() {
         {data?.items.map((c) => {
           const tags = parseTags(c.tags);
           const isNew = isNewThisWeek(c.first_seen);
+          const score = computeQualityScore(c);
+          const scoreColor =
+            score >= 70 ? "bg-green-100 text-green-600"
+            : score >= 40 ? "bg-yellow-100 text-yellow-600"
+            : "bg-red-100 text-red-600";
           return (
             <Link
               key={c.id}
@@ -258,7 +263,10 @@ export function Cases() {
                       <span className="text-xs text-muted-foreground">{c.customer_country}</span>
                     )}
                     {isNew && <Badge variant="new">NEW</Badge>}
-                    <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                    <span className={`ml-auto text-xs font-medium px-1.5 py-px rounded-full tabular-nums shrink-0 ${scoreColor}`}>
+                      {score}%
+                    </span>
+                    <span className="text-xs text-muted-foreground shrink-0">
                       {formatDate(c.first_seen)}
                     </span>
                   </div>

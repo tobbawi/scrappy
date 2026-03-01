@@ -6,7 +6,7 @@ from math import ceil
 
 from database import get_session
 from models import ReferenceCase
-from schemas import CaseRead, PaginatedCases
+from schemas import CaseRead, CaseUpdate, PaginatedCases
 
 router = APIRouter(prefix="/api/cases", tags=["cases"])
 
@@ -87,4 +87,17 @@ def get_case(case_id: str, session: Session = Depends(get_session)):
     case = session.get(ReferenceCase, case_id)
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
+    return case
+
+
+@router.patch("/{case_id}", response_model=CaseRead)
+def update_case(case_id: str, data: CaseUpdate, session: Session = Depends(get_session)):
+    case = session.get(ReferenceCase, case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(case, key, value)
+    session.add(case)
+    session.commit()
+    session.refresh(case)
     return case

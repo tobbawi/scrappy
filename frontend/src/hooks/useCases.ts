@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api, type CaseUpdate } from "@/lib/api";
 
 interface CaseFilters {
   company?: string;
@@ -25,5 +25,17 @@ export function useCase(id: string) {
     queryKey: ["cases", id],
     queryFn: () => api.cases.get(id),
     enabled: !!id,
+  });
+}
+
+export function useUpdateCase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: CaseUpdate }) =>
+      api.cases.update(id, data),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["cases"] });
+      queryClient.setQueryData(["cases", updated.id], updated);
+    },
   });
 }

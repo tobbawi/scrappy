@@ -13,6 +13,8 @@ Singleton table (always exactly one row with `id=1`). Created on app startup if 
 | `ollama_base_url` | string | no | `"http://localhost:11434"` | Base URL of the Ollama HTTP server |
 | `ollama_model` | string | no | `"llama3.2"` | Model name to use for extraction |
 | `ollama_timeout` | int | no | `60` | Seconds before an LLM request times out |
+| `scraper_enabled_fields` | TEXT (JSON) | no | `"[]"` | JSON array of field names to **disable** post-extraction; empty = all enabled |
+| `scraper_heuristic_labels` | TEXT (JSON) | no | `"{}"` | JSON object mapping field name → list of extra section-header keywords for heuristic extractor |
 
 ## Constraints
 
@@ -20,8 +22,9 @@ Singleton table (always exactly one row with `id=1`). Created on app startup if 
 
 ## Usage
 
-Settings are read at the start of every scrape job to decide whether to include
-`LLMExtractor` in the pipeline. They are passed as a dict to `ExtractionPipeline(llm_config=...)`.
+Settings are read at the start of every scrape job:
+- `ollama_*` fields decide whether to include `LLMExtractor` in the pipeline (`ExtractionPipeline(llm_config=...)`)
+- `scraper_enabled_fields` and `scraper_heuristic_labels` are passed as `scraper_config` to `ExtractionPipeline(scraper_config=...)`
 
 ## Startup Seed
 

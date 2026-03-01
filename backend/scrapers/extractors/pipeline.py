@@ -30,15 +30,26 @@ def detect_ollama(base_url: str = "http://localhost:11434", timeout: int = 60) -
 
 
 class ExtractionPipeline:
-    def __init__(self, llm_config: Optional[dict] = None):
+    def __init__(
+        self,
+        llm_config: Optional[dict] = None,
+        scraper_config: Optional[dict] = None,
+    ):
         """
         llm_config: dict with keys enabled, base_url, model, timeout.
                     If None or enabled=False, LLM step is skipped.
+        scraper_config: dict with optional keys:
+            disabled_fields (list[str]) — fields to null out after extraction
+            heuristic_labels (dict[str, list[str]]) — extra section-header keywords
         """
+        cfg = scraper_config or {}
+        self._disabled_fields: list[str] = cfg.get("disabled_fields", [])
+        heuristic_labels: dict[str, list[str]] = cfg.get("heuristic_labels", {})
+
         self.extractors = [
             MetaTagExtractor(),    # OG tags — most reliable
             SchemaOrgExtractor(),  # JSON-LD — structured
-            HeuristicExtractor(),  # h1/blockquote/semantic classes — fallback
+            HeuristicExtractor(custom_labels=heuristic_labels),  # h1/blockquote/semantic — fallback
         ]
         if llm_config and llm_config.get("enabled"):
             from .llm import LLMExtractor
@@ -77,6 +88,11 @@ class ExtractionPipeline:
                     "fields_new": sorted(after - before),
                     "duration_ms": duration_ms,
                 })
+
+        # Null out any fields disabled in scraper config
+        for field in self._disabled_fields:
+            if field in data:
+                data[field] = None
 
         data.pop("_og_description", None)
         return data

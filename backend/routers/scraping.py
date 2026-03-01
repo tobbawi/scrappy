@@ -132,6 +132,12 @@ def run_scrape_job(job_id: str, company_id: Optional[str]):
                 bus.emit({"type": "llm_config", "model": llm_config["model"],
                           "base_url": llm_config["base_url"]})
 
+            # Build scraper config from settings
+            scraper_config = {
+                "disabled_fields": json.loads(app_settings.scraper_enabled_fields or "[]"),
+                "heuristic_labels": json.loads(app_settings.scraper_heuristic_labels or "{}"),
+            }
+
             total_found = 0
             total_new = 0
 
@@ -169,7 +175,7 @@ def run_scrape_job(job_id: str, company_id: Optional[str]):
                     })
 
                     total_found += len(urls)
-                    pipeline = ExtractionPipeline(llm_config=llm_config)
+                    pipeline = ExtractionPipeline(llm_config=llm_config, scraper_config=scraper_config)
                     cases_new_company = 0
 
                     for idx, (url, html) in enumerate(html_map.items()):

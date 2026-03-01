@@ -37,6 +37,23 @@ export interface ReferenceCase {
   raw_text: string | null;
 }
 
+export interface CaseUpdate {
+  title?: string | null;
+  customer_name?: string | null;
+  customer_industry?: string | null;
+  customer_country?: string | null;
+  customer_logo_url?: string | null;
+  challenge?: string | null;
+  solution?: string | null;
+  results?: string | null;
+  products_used?: string | null;
+  quote?: string | null;
+  quote_author?: string | null;
+  quote_author_company?: string | null;
+  publish_date?: string | null;
+  tags?: string | null;
+}
+
 export interface PaginatedCases {
   items: ReferenceCase[];
   total: number;
@@ -97,6 +114,8 @@ export interface AppSettings {
   ollama_base_url: string;
   ollama_model: string;
   ollama_timeout: number;
+  scraper_enabled_fields: string[];
+  scraper_heuristic_labels: Record<string, string[]>;
 }
 
 export interface OllamaStatus {
@@ -154,6 +173,8 @@ export const api = {
       return request<PaginatedCases>(`/cases?${qs}`);
     },
     get: (id: string) => request<ReferenceCase>(`/cases/${id}`),
+    update: (id: string, data: CaseUpdate) =>
+      request<ReferenceCase>(`/cases/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   },
 
   scrape: {

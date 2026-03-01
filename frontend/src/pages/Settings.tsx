@@ -7,6 +7,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, RefreshCw, Loader2 } from "lucide-react";
 
+const SCRAPER_FIELDS = [
+  "customer_name",
+  "customer_industry",
+  "customer_country",
+  "challenge",
+  "solution",
+  "results",
+  "products_used",
+  "quote",
+  "tags",
+] as const;
+
+// Fields for which extra heuristic section keywords make sense
+const HEURISTIC_LABEL_FIELDS = new Set(["challenge", "solution", "results", "tags"]);
+
 function Switch({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
@@ -45,11 +60,22 @@ export function Settings() {
   const [model, setModel] = useState("");
   const [timeout, setTimeout_] = useState(60);
 
+  // Scraper field config state: disabled fields + extra heuristic labels
+  const [disabledFields, setDisabledFields] = useState<string[]>([]);
+  const [heuristicLabels, setHeuristicLabels] = useState<Record<string, string>>({});
+  const [scraperSaveError, setScraperSaveError] = useState<string | null>(null);
+
   useEffect(() => {
     if (settings) {
       setBaseUrl(settings.ollama_base_url);
       setModel(settings.ollama_model);
       setTimeout_(settings.ollama_timeout);
+      setDisabledFields(settings.scraper_enabled_fields ?? []);
+      const labelsAsText: Record<string, string> = {};
+      for (const [field, labels] of Object.entries(settings.scraper_heuristic_labels ?? {})) {
+        labelsAsText[field] = labels.join(", ");
+      }
+      setHeuristicLabels(labelsAsText);
     }
   }, [settings]);
 
@@ -60,6 +86,25 @@ export function Settings() {
 
   const handleSaveOllama = () => {
     updateSettings({ ollama_base_url: baseUrl, ollama_model: model, ollama_timeout: timeout });
+  };
+
+  const handleSaveScraperConfig = () => {
+    setScraperSaveError(null);
+    const labels: Record<string, string[]> = {};
+    for (const [field, raw] of Object.entries(heuristicLabels)) {
+      const arr = raw.split(",").map((s) => s.trim()).filter(Boolean);
+      if (arr.length > 0) labels[field] = arr;
+    }
+    updateSettings(
+      { scraper_enabled_fields: disabledFields, scraper_heuristic_labels: labels },
+      { onError: (e) => setScraperSaveError(e instanceof Error ? e.message : "Save failed") }
+    );
+  };
+
+  const toggleField = (field: string, enabled: boolean) => {
+    setDisabledFields((prev) =>
+      enabled ? prev.filter((f) => f !== field) : [...prev, field]
+    );
   };
 
   return (
@@ -199,6 +244,49 @@ export function Settings() {
               </div>
             )}
           </div>
+        </div>
+      </section>
+
+      {/* Scraper Fields */}
+      <section>
+        <SectionHeader>Scraper Fields</SectionHeader>
+        <p className="text-sm text-muted-foreground mb-4">
+          Disable fields to prevent the scraper from extracting them. Add extra section-header
+          keywords to improve heuristic extraction for specific fields.
+        </p>
+        <div className="space-y-4">
+          {SCRAPER_FIELDS.map((field) => {
+            const isEnabled = !disabledFields.includes(field);
+            return (
+              <div key={field} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium font-mono">{field}</span>
+                  <Switch checked={isEnabled} onChange={(v) => toggleField(field, v)} />
+                </div>
+                {isEnabled && HEURISTIC_LABEL_FIELDS.has(field) && (
+                  <div className="space-y-1 pl-1">
+                    <Label className="text-xs text-muted-foreground">
+                      Extra section keywords (comma-separated)
+                    </Label>
+                    <Input
+                      className="h-8 text-xs"
+                      placeholder={`e.g. ${field === "challenge" ? "pain point, problem" : field === "results" ? "roi, savings" : "extra keyword"}`}
+                      value={heuristicLabels[field] ?? ""}
+                      onChange={(e) =>
+                        setHeuristicLabels((prev) => ({ ...prev, [field]: e.target.value }))
+                      }
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {scraperSaveError && (
+            <p className="text-sm text-destructive">{scraperSaveError}</p>
+          )}
+          <Button size="sm" onClick={handleSaveScraperConfig} disabled={isSaving}>
+            {isSaving ? "Saving…" : "Save"}
+          </Button>
         </div>
       </section>
 

@@ -17,6 +17,8 @@ async def lifespan(app: FastAPI):
     with engine.connect() as conn:
         for stmt in [
             "ALTER TABLE scrapejob ADD COLUMN log TEXT",
+            "ALTER TABLE appsettings ADD COLUMN scraper_enabled_fields TEXT DEFAULT '[]'",
+            "ALTER TABLE appsettings ADD COLUMN scraper_heuristic_labels TEXT DEFAULT '{}'",
         ]:
             try:
                 conn.execute(text(stmt))

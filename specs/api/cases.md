@@ -50,6 +50,42 @@ Get a single case by its 12-char SHA256 ID.
 
 ---
 
+## PATCH /api/cases/{id}
+
+Partially update a case's editable fields.
+
+**Path param:** `id` — 12-char hex string
+
+**Request body** (all fields optional):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `title` | string \| null | Case title |
+| `customer_name` | string \| null | Customer name |
+| `customer_industry` | string \| null | Customer industry |
+| `customer_country` | string \| null | Customer country |
+| `customer_logo_url` | string \| null | Logo URL |
+| `challenge` | string \| null | Challenge text |
+| `solution` | string \| null | Solution text |
+| `results` | string \| null | Results text |
+| `products_used` | string \| null | Comma-separated products |
+| `quote` | string \| null | Pull quote text |
+| `quote_author` | string \| null | Quote attribution name |
+| `quote_author_company` | string \| null | Quote attribution company |
+| `publish_date` | date \| null | ISO date string (`YYYY-MM-DD`) |
+| `tags` | string \| null | JSON array string of tags |
+
+Only fields present in the request body are updated. Omitted fields are left unchanged.
+
+**Response `200`** — Updated `ReferenceCase` object.
+
+**Error `404`** — Case not found.
+```json
+{ "detail": "Case not found" }
+```
+
+---
+
 ## ReferenceCase Fields
 
 See [data-models/reference-case.md](../data-models/reference-case.md) for the full field reference.

@@ -1,5 +1,6 @@
 from datetime import datetime, date, timezone
 from typing import Optional
+from sqlalchemy import Column, TEXT
 from sqlmodel import SQLModel, Field
 
 
@@ -50,6 +51,14 @@ class AppSettings(SQLModel, table=True):
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
     ollama_timeout: int = 60  # seconds per LLM call
+    scraper_enabled_fields: str = Field(
+        default="[]",
+        sa_column=Column(TEXT),
+    )  # JSON array of field names to disable post-extraction; [] = all enabled
+    scraper_heuristic_labels: str = Field(
+        default="{}",
+        sa_column=Column(TEXT),
+    )  # JSON object: field → list of extra section-header keywords
 
 
 class ScrapeJob(SQLModel, table=True):

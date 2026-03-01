@@ -64,6 +64,23 @@ class CaseRead(BaseModel):
         from_attributes = True
 
 
+class CaseUpdate(BaseModel):
+    title: Optional[str] = None
+    customer_name: Optional[str] = None
+    customer_industry: Optional[str] = None
+    customer_country: Optional[str] = None
+    customer_logo_url: Optional[str] = None
+    challenge: Optional[str] = None
+    solution: Optional[str] = None
+    results: Optional[str] = None
+    products_used: Optional[str] = None
+    quote: Optional[str] = None
+    quote_author: Optional[str] = None
+    quote_author_company: Optional[str] = None
+    publish_date: Optional[date] = None
+    tags: Optional[str] = None
+
+
 class ScrapeRequest(BaseModel):
     company_id: str = "all"
 
@@ -97,9 +114,8 @@ class SettingsRead(BaseModel):
     ollama_base_url: str
     ollama_model: str
     ollama_timeout: int
-
-    class Config:
-        from_attributes = True
+    scraper_enabled_fields: List[str]
+    scraper_heuristic_labels: dict
 
 
 class SettingsUpdate(BaseModel):
@@ -107,6 +123,8 @@ class SettingsUpdate(BaseModel):
     ollama_base_url: Optional[str] = None
     ollama_model: Optional[str] = None
     ollama_timeout: Optional[int] = None
+    scraper_enabled_fields: Optional[List[str]] = None
+    scraper_heuristic_labels: Optional[dict] = None
 
     @field_validator("ollama_base_url")
     @classmethod
