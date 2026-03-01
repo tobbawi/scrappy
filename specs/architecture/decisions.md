@@ -139,8 +139,34 @@ Settings (URL, model, timeout) are stored in a singleton DB row and configurable
 **Context:** The `@radix-ui/react-badge` npm package does not exist. Needed a Badge UI primitive.
 
 **Decision:** Implement `Badge` as a custom CVA-based component in `components/ui/badge.tsx`.
-Variants: default, success, warning, error, secondary, outline.
+Variants: default, success, warning, error, secondary, outline, new.
 
 **Consequences:**
 - Full control over variants.
 - Must maintain the component manually (no upstream updates).
+
+---
+
+## ADR-010 — SaaS-Style Design System (Indigo + Dark Sidebar)
+
+**Date:** 2026-03
+
+**Context:** Primary users are Sales/BD reps, Marketing, and Management who browse new cases
+daily. The original UI was functional but generic (flat, low hierarchy, muted palette).
+A more polished design reduces friction and surfaces the "what's new" signal faster.
+
+**Decision:** Adopt a Linear/Vercel-inspired design system:
+- **Primary colour**: Indigo-violet (`243 75% 59%`) replaces plain blue (`221 83% 53%`)
+- **Sidebar**: Near-black (`240 10% 8%`) with `zinc-400` inactive / `white` active nav states
+- **Background**: Subtly warm off-white (`0 0% 98.5%`) instead of pure white
+- **Cards**: Pure white with `shadow-card` (`0 1px 3px / .06`) instead of flat borders
+- **Borders**: Lightened to `0 0% 92%` (barely visible, like Linear)
+- **Design tokens**: Added `--sidebar` and `--sidebar-fg` CSS variables; `shadow-card` Tailwind token
+- **Typography**: Added `cv11`, `ss01` font features; `tracking-tight` on all headings
+- **Utilities**: `timeAgo()` for relative timestamps; `isNewThisWeek()` for NEW badge logic
+
+**Consequences:**
+- Consistent, premium aesthetic without adding new dependencies.
+- Dark sidebar requires careful colour contrast checks for nav items.
+- `--sidebar` CSS variable must be used (not Tailwind `bg-muted`) for correct dark background.
+- `timeAgo()` result updates only on page refresh (no live clock); acceptable for this use case.

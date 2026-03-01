@@ -33,10 +33,10 @@ Each company represents one website with a listing page of case studies.
 
 **Acceptance criteria:**
 - Given a company is listed in the Companies page
-- When I click "Scrape Now"
-- Then a spinner appears on the button and the status changes to "running"
+- When I click "Scrape"
+- Then a spinner appears on the button and the status dot changes to amber (running)
 - When the job completes
-- Then the status shows "success" and `last_scraped_at` is updated
+- Then the status dot turns emerald (success) and `last_scraped_at` is updated
 - And the Dashboard reflects the new case count
 
 ---
@@ -71,7 +71,7 @@ Each company represents one website with a listing page of case studies.
 **As a user**, I want to permanently remove a company and all its cases.
 
 **Acceptance criteria:**
-- Given I click "Delete" on a company
+- Given I click the delete button on a company row
 - When I confirm the deletion prompt
 - Then the company row is deleted from the DB
 - And all related `ReferenceCase` rows are deleted
@@ -81,10 +81,14 @@ Each company represents one website with a listing page of case studies.
 
 ## UI Components
 
-- **Companies page** (`/companies`): Table with columns: Name, Listing URL, Fetcher type, Status, Last scraped, Actions.
+- **Companies page** (`/companies`): Table with columns: Company (name + colored status dot), Listing URL, Fetcher, Status, Last scraped, Actions.
 - **AddCompanyDialog**: Modal form (name, URL, fetcher type, path prefix).
-- Status badge: idle (gray) | running (yellow) | success (green) | error (red).
-- Error message displayed below company row when status = error.
+- **Status dot**: `idle` = zinc • `running` = amber (pulsing) • `success` = emerald • `error` = red.
+- **Status badge**: same colour coding as dot, shown alongside it.
+- **Error indicator**: red `!` circle on the row; full error text shown on hover (title tooltip).
+- **Fetcher label**: emoji prefix — ⚡ Static, 🎭 Dynamic, 🥷 Stealthy.
+- **Last scraped**: displayed as relative time ("3 hours ago") via `timeAgo()`.
+- **Action buttons**: small labeled buttons — toggle active (ToggleLeft/Right icon), "Scrape" (RefreshCw icon), delete (Trash icon in destructive colour).
 
 ---
 

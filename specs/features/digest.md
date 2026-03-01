@@ -17,19 +17,20 @@ grouped by company. It can be viewed in the UI or downloaded as HTML or Markdown
 **Acceptance criteria:**
 - Given I navigate to `/digest`
 - Then cases with `first_seen >= now - 7 days` are shown, grouped by company
-- And each group shows company name and a list of case titles with links
+- And each group shows company name, case count, and a list of case titles with links
 - And a total count "N new cases since DATE" is shown at the top
 
 ---
 
-### US-2: Change the digest date range
+### US-2: Change the digest time range
 
-**As a user**, I want to adjust the "since" date to see cases from a longer or shorter period.
+**As a user**, I want to adjust the look-back period to 7, 14, or 30 days,
+**so that** I can see cases from a longer period without a date picker.
 
 **Acceptance criteria:**
-- Given I use the date picker to change the "since" date
-- When I click Refresh
-- Then the digest is reloaded with cases since that date
+- Given I click a segment in the "7 days / 14 days / 30 days" control
+- Then the digest is immediately reloaded with cases since `now - N days`
+- And the active segment is visually highlighted
 
 ---
 
@@ -59,13 +60,12 @@ grouped by company. It can be viewed in the UI or downloaded as HTML or Markdown
 
 ### Digest Page (`/digest`)
 
-- Date picker (defaults to 7 days ago)
-- Refresh button
+- **Segmented time control**: pill buttons — "7 days" (default) | "14 days" | "30 days"; active segment has white background + shadow
 - Total count: "N new cases since DATE"
-- Download buttons: "Markdown" and "HTML"
-- Grouped list:
-  - Company name header + case count badge
-  - Case items: title link, customer name, first seen date
+- Download buttons: "Markdown" (Download icon) and "HTML" (Download icon)
+- Grouped cards:
+  - Card header: company name (left) + case count (right)
+  - Case rows: company initial avatar (28 px), title, customer name, first seen date, "View →" link
 
 ---
 
