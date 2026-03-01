@@ -27,3 +27,29 @@ export function parseTags(raw: string | null | undefined): string[] {
     return raw.split(",").map((t) => t.trim()).filter(Boolean);
   }
 }
+
+export function timeAgo(dateStr: string | null | undefined): string {
+  if (!dateStr) return "—";
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffSecs = Math.floor(diffMs / 1000);
+  const diffMins = Math.floor(diffSecs / 60);
+  const diffHours = Math.floor(diffMins / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffSecs < 60) return "just now";
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays < 7) return `${diffDays} days ago`;
+  return formatDate(dateStr);
+}
+
+export function isNewThisWeek(dateStr: string | null | undefined): boolean {
+  if (!dateStr) return false;
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  return diffMs < 7 * 24 * 60 * 60 * 1000;
+}
