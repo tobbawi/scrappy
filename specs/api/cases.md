@@ -15,8 +15,8 @@ Paginated list of reference cases with optional filters.
 | `company` | string | — | Filter by company ID (exact slug) |
 | `industry` | string | — | Case-insensitive search on `customer_industry` |
 | `country` | string | — | Case-insensitive search on `customer_country` |
-| `q` | string | — | Full-text search across `title`, `customer_name`, `raw_text`, `tags` |
-| `since` | ISO datetime | — | Filter cases where `first_seen >= since` |
+| `q` | string (max 200 chars) | — | Full-text search across `title`, `customer_name`, `raw_text`, `tags` |
+| `since` | ISO datetime | — | Filter cases where `first_seen >= since`. Returns `400` if not valid ISO 8601. |
 | `new_only` | bool | `false` | Shorthand for `since = now - 7 days` |
 | `sort` | enum | `"first_seen"` | `"first_seen"` \| `"publish_date"` |
 | `page` | int | `1` | Page number (1-indexed) |

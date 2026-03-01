@@ -6,24 +6,37 @@ Base path: `/api/companies`
 
 ## GET /api/companies
 
-Returns all companies ordered by name.
+Returns a paginated list of companies ordered by name.
+
+**Query parameters**
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `page` | int | `1` | Page number (1-indexed) |
+| `per_page` | int | `100` | Items per page (max `200`) |
 
 **Response `200`**
 ```json
-[
-  {
-    "id": "acme-corp",
-    "name": "Acme Corp",
-    "listing_url": "https://acme.com/customers",
-    "fetcher_type": "static",
-    "case_path_prefix": "/customers/",
-    "active": true,
-    "created_at": "2026-01-01T00:00:00",
-    "last_scraped_at": "2026-01-10T18:00:00",
-    "scrape_status": "success",
-    "error_message": null
-  }
-]
+{
+  "items": [
+    {
+      "id": "acme-corp",
+      "name": "Acme Corp",
+      "listing_url": "https://acme.com/customers",
+      "fetcher_type": "static",
+      "case_path_prefix": "/customers/",
+      "active": true,
+      "created_at": "2026-01-01T00:00:00",
+      "last_scraped_at": "2026-01-10T18:00:00",
+      "scrape_status": "success",
+      "error_message": null
+    }
+  ],
+  "total": 63,
+  "page": 1,
+  "per_page": 100,
+  "pages": 1
+}
 ```
 
 ---

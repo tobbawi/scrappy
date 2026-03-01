@@ -25,7 +25,7 @@ Table: `reference_case`
 | `tags` | string (JSON) | yes | `null` | JSON array: `["cloud", "security"]` |
 | `first_seen` | datetime | no | `utcnow()` | When scrappy first discovered this case |
 | `last_checked` | datetime | no | `utcnow()` | When scrappy last fetched this case |
-| `content_hash` | string | yes | `null` | MD5(html); used to detect page changes |
+| `content_hash` | string | no | — | MD5(html); computed by scraping pipeline, always present for saved cases |
 | `raw_text` | text | yes | `null` | Full page text (capped at 50 KB) |
 
 ## Constraints

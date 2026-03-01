@@ -149,6 +149,8 @@ Variants: default, success, warning, error, secondary, outline, new.
 
 ## ADR-010 — SaaS-Style Design System (Indigo + Dark Sidebar)
 
+
+
 **Date:** 2026-03
 
 **Context:** Primary users are Sales/BD reps, Marketing, and Management who browse new cases
@@ -170,3 +172,72 @@ A more polished design reduces friction and surfaces the "what's new" signal fas
 - Dark sidebar requires careful colour contrast checks for nav items.
 - `--sidebar` CSS variable must be used (not Tailwind `bg-muted`) for correct dark background.
 - `timeAgo()` result updates only on page refresh (no live clock); acceptable for this use case.
+
+---
+
+## ADR-011 — SSRF Prevention on User-Supplied URLs
+
+**Date:** 2026-03
+
+**Context:** Two endpoints accept user-controlled URLs that are subsequently used in
+server-side HTTP requests: `listing_url` (stored on Company, used when scraping) and
+`ollama_base_url` (stored in AppSettings, used to probe Ollama). Without validation,
+an attacker could supply internal addresses (`127.0.0.1`, `169.254.169.254`, RFC-1918
+ranges) to make the server fetch internal services.
+
+**Decision:**
+- `listing_url` is validated in `scrapers/listing.py::is_safe_url()` at fetch time.
+- `ollama_base_url` is validated in the `SettingsUpdate` Pydantic schema via
+  `@field_validator("ollama_base_url")` at request time.
+- Both checks: scheme must be `http` or `https`; hostname must not resolve to a
+  loopback, private, link-local, or reserved IP range (via `ipaddress.ip_address()`);
+  `localhost` and `*.local` domain names are also rejected.
+
+**Consequences:**
+- Requests to private network addresses are blocked before any HTTP call is made.
+- Legitimate Ollama installs on `localhost` cannot be configured via the API; users
+  must use a routable hostname or keep the default `http://localhost:11434` already
+  stored in the DB. The SSRF check runs only on updates, not on reads.
+- `listing_url` values already in the DB are not retroactively validated; the check
+  fires when `get_case_urls()` is called during a scrape.
+
+---
+
+## ADR-012 — URL Normalisation Strips Query Strings
+
+**Date:** 2026-03
+
+**Context:** Listing pages sometimes link to the same case study with different query
+parameters (UTM tracking, session tokens, etc.). Because `ReferenceCase.url` has a
+`UNIQUE` constraint, inserting the same path with different query strings creates
+duplicate rows or triggers integrity errors.
+
+**Decision:** `normalize_url()` in `scrapers/listing.py` strips both the URL fragment
+and the query string when resolving hrefs to absolute URLs. The canonical form used
+for deduplication and storage is `scheme://host/path` with no query or fragment.
+
+**Consequences:**
+- Two links to the same page with different UTM parameters are treated as one case.
+- Query-string-based pagination (e.g. `?page=2`) is also stripped; this is acceptable
+  because listing pages are fetched directly, not via discovered hrefs.
+- Case URLs stored in the DB are clean canonical paths.
+
+---
+
+## ADR-013 — Paginated Companies Endpoint
+
+**Date:** 2026-03
+
+**Context:** `GET /api/companies` previously returned all companies in a single
+response with no limit. While the typical dataset is ~60 companies, an unbounded query
+is a latency and memory risk as the dataset grows.
+
+**Decision:** `GET /api/companies` now returns a `PaginatedCompanies` envelope
+(`items`, `total`, `page`, `per_page`, `pages`) with a default `per_page=100` and
+maximum `per_page=200`. This mirrors the existing `PaginatedCases` pattern.
+
+**Consequences:**
+- All callers must read `.items` instead of the raw array.
+- Frontend (`useCompanies`, `Companies.tsx`, `Cases.tsx`) updated accordingly.
+- Default page size (100) comfortably covers the expected company count without
+  requiring clients to implement pagination for the common case.
