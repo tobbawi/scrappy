@@ -27,15 +27,20 @@ export function Digest() {
   });
 
   const downloadFormat = async (format: "html" | "markdown") => {
-    const res = await fetch(`/api/digest?since=${since}&format=${format}`);
-    const text = await res.text();
-    const blob = new Blob([text], { type: format === "html" ? "text/html" : "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `scrappy-digest-${since}.${format === "html" ? "html" : "md"}`;
-    a.click();
-    URL.revokeObjectURL(url);
+    try {
+      const res = await fetch(`/api/digest?since=${since}&format=${format}`);
+      if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+      const text = await res.text();
+      const blob = new Blob([text], { type: format === "html" ? "text/html" : "text/markdown" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `scrappy-digest-${since}.${format === "html" ? "html" : "md"}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`Download failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    }
   };
 
   return (

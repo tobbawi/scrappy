@@ -1,3 +1,5 @@
+import html as html_lib
+import re
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
@@ -59,15 +61,16 @@ def _render_markdown(data: dict) -> str:
 
 def _render_html(data: dict) -> str:
     md = _render_markdown(data)
-    # Simple markdown-to-html conversion
-    import re
-    html = md
-    html = re.sub(r"^## (.+)$", r"<h2>\1</h2>", html, flags=re.MULTILINE)
-    html = re.sub(r"^# (.+)$", r"<h1>\1</h1>", html, flags=re.MULTILINE)
-    html = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", html)
-    html = re.sub(r"^- (.+)$", r"<li>\1</li>", html, flags=re.MULTILINE)
-    html = f"<html><body style='font-family:sans-serif;max-width:800px;margin:auto'>{html}</body></html>"
-    return html
+    # Escape all HTML special characters in the raw markdown before substitution
+    # so that user-controlled content (titles, quotes, names, URLs) cannot inject
+    # markup into the rendered output.  The markdown delimiters (**  ##  #  -)
+    # contain no HTML-special characters, so the regex patterns still match.
+    body = html_lib.escape(md)
+    body = re.sub(r"^## (.+)$", r"<h2>\1</h2>", body, flags=re.MULTILINE)
+    body = re.sub(r"^# (.+)$", r"<h1>\1</h1>", body, flags=re.MULTILINE)
+    body = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", body)
+    body = re.sub(r"^- (.+)$", r"<li>\1</li>", body, flags=re.MULTILINE)
+    return f"<html><body style='font-family:sans-serif;max-width:800px;margin:auto'>{body}</body></html>"
 
 
 @router.get("/digest")
@@ -130,10 +133,12 @@ def get_stats(session: Session = Depends(get_session)):
         .order_by(ScrapeJob.finished_at.desc())
     ).first()
 
-    companies = session.exec(select(Company)).all()
-    by_status: dict[str, int] = {}
-    for c in companies:
-        by_status[c.scrape_status] = by_status.get(c.scrape_status, 0) + 1
+    from sqlmodel import func
+    status_rows = session.exec(
+        select(Company.scrape_status, func.count(Company.id).label("count"))
+        .group_by(Company.scrape_status)
+    ).all()
+    by_status = {status: count for status, count in status_rows}
 
     return StatsRead(
         total_companies=total_companies,

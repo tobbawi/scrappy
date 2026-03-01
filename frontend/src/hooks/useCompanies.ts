@@ -1,10 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, Company } from "@/lib/api";
+import { api, Company, PaginatedCompanies } from "@/lib/api";
 
-export function useCompanies() {
-  return useQuery({
-    queryKey: ["companies"],
-    queryFn: api.companies.list,
+export function useCompanies(page = 1, per_page = 100) {
+  return useQuery<PaginatedCompanies>({
+    queryKey: ["companies", page, per_page],
+    queryFn: () => api.companies.list(page, per_page),
   });
 }
 

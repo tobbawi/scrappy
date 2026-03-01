@@ -1,18 +1,32 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select
+from math import ceil
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlmodel import Session, select, func
 from slugify import slugify
 from datetime import datetime
 
 from database import get_session
 from models import Company
-from schemas import CompanyCreate, CompanyUpdate, CompanyRead
+from schemas import CompanyCreate, CompanyUpdate, CompanyRead, PaginatedCompanies
 
 router = APIRouter(prefix="/api/companies", tags=["companies"])
 
 
-@router.get("", response_model=list[CompanyRead])
-def list_companies(session: Session = Depends(get_session)):
-    return session.exec(select(Company).order_by(Company.name)).all()
+@router.get("", response_model=PaginatedCompanies)
+def list_companies(
+    page: int = Query(1, ge=1),
+    per_page: int = Query(100, ge=1, le=200),
+    session: Session = Depends(get_session),
+):
+    total = session.exec(select(func.count(Company.id))).one()
+    offset = (page - 1) * per_page
+    items = session.exec(select(Company).order_by(Company.name).offset(offset).limit(per_page)).all()
+    return PaginatedCompanies(
+        items=list(items),
+        total=total,
+        page=page,
+        per_page=per_page,
+        pages=ceil(total / per_page) if total else 0,
+    )
 
 
 @router.post("", response_model=CompanyRead, status_code=201)
@@ -62,9 +76,8 @@ def delete_company(company_id: str, session: Session = Depends(get_session)):
     company = session.get(Company, company_id)
     if not company:
         raise HTTPException(status_code=404, detail="Company not found")
+    from sqlalchemy import delete
     from models import ReferenceCase
-    cases = session.exec(select(ReferenceCase).where(ReferenceCase.company_id == company_id)).all()
-    for case in cases:
-        session.delete(case)
+    session.exec(delete(ReferenceCase).where(ReferenceCase.company_id == company_id))
     session.delete(company)
     session.commit()

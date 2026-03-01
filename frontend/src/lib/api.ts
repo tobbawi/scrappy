@@ -45,6 +45,14 @@ export interface PaginatedCases {
   pages: number;
 }
 
+export interface PaginatedCompanies {
+  items: Company[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
 export interface ScrapeJob {
   id: string;
   company_id: string | null;
@@ -127,13 +135,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 // Companies
 export const api = {
   companies: {
-    list: () => request<Company[]>("/companies"),
+    list: (page = 1, per_page = 100) =>
+      request<PaginatedCompanies>(`/companies?page=${page}&per_page=${per_page}`),
     create: (data: { name: string; listing_url: string; fetcher_type?: string; case_path_prefix?: string | null; active?: boolean }) =>
       request<Company>("/companies", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Company>) =>
       request<Company>(`/companies/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
     delete: (id: string) =>
-      fetch(`${BASE}/companies/${id}`, { method: "DELETE" }),
+      request<void>(`/companies/${id}`, { method: "DELETE" }),
   },
 
   cases: {

@@ -102,7 +102,8 @@ export function Cases() {
   const page = parseInt(searchParams.get("page") ?? "1");
   const newOnly = searchParams.get("new_only") === "true";
 
-  const { data: companies } = useCompanies();
+  const { data: companiesData } = useCompanies();
+  const companies = companiesData?.items;
   const { data, isLoading } = useCases({
     q: debouncedQ,
     company: company || undefined,

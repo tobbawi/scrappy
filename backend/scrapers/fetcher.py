@@ -32,9 +32,10 @@ def fetch_dynamic(url: str, stealth: bool = False) -> str:
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        html = _fetch_with_browser(browser, url, stealth)
-        browser.close()
-        return html
+        try:
+            return _fetch_with_browser(browser, url, stealth)
+        finally:
+            browser.close()
 
 
 def _fetch_with_browser(browser, url: str, stealth: bool = False) -> str:
@@ -44,15 +45,16 @@ def _fetch_with_browser(browser, url: str, stealth: bool = False) -> str:
         locale="en-US",
         extra_http_headers={"Accept-Language": "en-US,en;q=0.9"} if stealth else {},
     )
-    page = context.new_page()
-    page.goto(url, wait_until="domcontentloaded", timeout=30_000)
     try:
-        page.wait_for_load_state("networkidle", timeout=6_000)
-    except Exception:
-        pass
-    html = page.content()
-    context.close()
-    return html
+        page = context.new_page()
+        page.goto(url, wait_until="domcontentloaded", timeout=30_000)
+        try:
+            page.wait_for_load_state("networkidle", timeout=6_000)
+        except Exception:
+            pass
+        return page.content()
+    finally:
+        context.close()
 
 
 def fetch_batch(urls: list[str], fetcher_type: str = "static") -> dict[str, str]:
@@ -82,16 +84,18 @@ def fetch_batch(urls: list[str], fetcher_type: str = "static") -> dict[str, str]
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        for url in urls:
-            try:
-                results[url] = _fetch_with_browser(browser, url, stealth)
-            except Exception as e:
-                print(f"[fetch_batch] dynamic failed {url}, trying static: {e}")
+        try:
+            for url in urls:
                 try:
-                    results[url] = fetch_static(url)
-                except Exception as e2:
-                    print(f"[fetch_batch] static fallback also failed {url}: {e2}")
-        browser.close()
+                    results[url] = _fetch_with_browser(browser, url, stealth)
+                except Exception as e:
+                    print(f"[fetch_batch] dynamic failed {url}, trying static: {e}")
+                    try:
+                        results[url] = fetch_static(url)
+                    except Exception as e2:
+                        print(f"[fetch_batch] static fallback also failed {url}: {e2}")
+        finally:
+            browser.close()
 
     return results
 

@@ -25,6 +25,8 @@ function CompanyRow({ company }: { company: Company }) {
   const { mutate: deleteCompany } = useDeleteCompany();
   const { mutate: updateCompany } = useUpdateCompany();
 
+  const onError = (err: Error) => alert(err.message);
+
   return (
     <tr className="border-b hover:bg-muted/30 transition-colors">
       <td className="px-4 py-3">
@@ -90,7 +92,7 @@ function CompanyRow({ company }: { company: Company }) {
             variant="ghost"
             className="h-7 text-xs gap-1"
             title={company.active ? "Disable" : "Enable"}
-            onClick={() => updateCompany({ id: company.id, data: { active: !company.active } })}
+            onClick={() => updateCompany({ id: company.id, data: { active: !company.active } }, { onError })}
           >
             {company.active ? (
               <ToggleRight className="h-4 w-4 text-emerald-600" />
@@ -103,7 +105,7 @@ function CompanyRow({ company }: { company: Company }) {
             variant="ghost"
             className="h-7 text-xs gap-1"
             disabled={isScraping || company.scrape_status === "running"}
-            onClick={() => triggerScrape(company.id)}
+            onClick={() => triggerScrape(company.id, { onError })}
           >
             <RefreshCw className={`h-3.5 w-3.5 ${isScraping ? "animate-spin" : ""}`} />
             Scrape
@@ -113,7 +115,7 @@ function CompanyRow({ company }: { company: Company }) {
             variant="ghost"
             className="h-7 text-xs gap-1 text-destructive hover:text-destructive"
             onClick={() => {
-              if (confirm(`Delete ${company.name}?`)) deleteCompany(company.id);
+              if (confirm(`Delete ${company.name}?`)) deleteCompany(company.id, { onError });
             }}
           >
             <Trash2 className="h-3.5 w-3.5" />
@@ -125,7 +127,8 @@ function CompanyRow({ company }: { company: Company }) {
 }
 
 export function Companies() {
-  const { data: companies, isLoading } = useCompanies();
+  const { data, isLoading } = useCompanies();
+  const companies = data?.items;
   const { mutate: triggerAll, isPending } = useTriggerScrape();
 
   return (

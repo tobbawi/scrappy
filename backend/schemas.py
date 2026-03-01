@@ -1,6 +1,8 @@
+import ipaddress
 from datetime import datetime, date
 from typing import Optional, List
-from pydantic import BaseModel
+from urllib.parse import urlparse
+from pydantic import BaseModel, field_validator
 
 
 class CompanyCreate(BaseModel):
@@ -106,9 +108,37 @@ class SettingsUpdate(BaseModel):
     ollama_model: Optional[str] = None
     ollama_timeout: Optional[int] = None
 
+    @field_validator("ollama_base_url")
+    @classmethod
+    def validate_ollama_url(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("Only http/https URLs are allowed")
+        hostname = parsed.hostname
+        if not hostname:
+            raise ValueError("URL must include a hostname")
+        try:
+            addr = ipaddress.ip_address(hostname)
+            is_private = addr.is_loopback or addr.is_private or addr.is_link_local or addr.is_reserved
+        except ValueError:
+            is_private = hostname == "localhost" or hostname.endswith(".local")
+        if is_private:
+            raise ValueError("Private or reserved addresses are not allowed")
+        return v
+
 
 class PaginatedCases(BaseModel):
     items: List[CaseRead]
+    total: int
+    page: int
+    per_page: int
+    pages: int
+
+
+class PaginatedCompanies(BaseModel):
+    items: List[CompanyRead]
     total: int
     page: int
     per_page: int
