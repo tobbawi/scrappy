@@ -75,12 +75,12 @@ export function Dashboard() {
               <p className="text-sm text-muted-foreground p-4">No jobs yet.</p>
             )}
             {jobs?.slice(0, 8).map((job) => (
-              <div key={job.id} className="flex items-center gap-3 px-4 py-2">
+              <Link key={job.id} to={`/jobs/${job.id}`} className="flex items-center gap-3 px-4 py-2 hover:bg-accent/50">
                 <Badge variant={statusColors[job.status] ?? "secondary"}>{job.status}</Badge>
                 <span className="text-sm flex-1 truncate">{job.company_id ?? "All companies"}</span>
                 <span className="text-xs text-muted-foreground">{job.cases_new} new</span>
                 <span className="text-xs text-muted-foreground">{formatDate(job.started_at ?? job.finished_at)}</span>
-              </div>
+              </Link>
             ))}
           </div>
         </div>

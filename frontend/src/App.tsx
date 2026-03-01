@@ -6,6 +6,7 @@ import { Cases } from "@/pages/Cases";
 import { CaseDetail } from "@/pages/CaseDetail";
 import { Digest } from "@/pages/Digest";
 import { Settings } from "@/pages/Settings";
+import { JobDetail } from "@/pages/JobDetail";
 
 export default function App() {
   return (
@@ -17,6 +18,7 @@ export default function App() {
         <Route path="/cases/:id" element={<CaseDetail />} />
         <Route path="/digest" element={<Digest />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/jobs/:id" element={<JobDetail />} />
       </Route>
     </Routes>
   );

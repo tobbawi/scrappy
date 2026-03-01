@@ -10,8 +10,21 @@ from routers import settings as settings_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
-    # Seed default settings row if absent
+
+    # Add columns introduced after initial schema creation (safe to re-run)
     from database import engine
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        for stmt in [
+            "ALTER TABLE scrape_job ADD COLUMN log TEXT",
+        ]:
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception:
+                pass  # column already exists
+
+    # Seed default settings row if absent
     from sqlmodel import Session
     from routers.settings import get_or_create_settings
     with Session(engine) as s:

@@ -75,6 +75,7 @@ class ScrapeJobRead(BaseModel):
     cases_found: int
     cases_new: int
     error: Optional[str]
+    log: Optional[str] = None
 
     class Config:
         from_attributes = True

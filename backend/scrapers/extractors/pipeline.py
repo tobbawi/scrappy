@@ -48,13 +48,35 @@ class ExtractionPipeline:
                 timeout=llm_config.get("timeout", 60),
             ))
 
-    def run(self, html: str, url: str) -> dict:
+    # Fields reported in extractor events (excludes internal/raw fields)
+    _TRACKED = frozenset({
+        "title", "customer_name", "customer_industry", "customer_country",
+        "customer_logo_url", "challenge", "solution", "results", "products_used",
+        "quote", "quote_author", "quote_author_company", "publish_date", "tags",
+    })
+
+    def run(self, html: str, url: str, on_event=None) -> dict:
+        import time
         soup = BeautifulSoup(html, "lxml")
         raw_text = soup.get_text(separator="\n", strip=True)
         data = {"url": url, "raw_text": raw_text[:50_000]}
 
         for extractor in self.extractors:
+            name = type(extractor).__name__
+            if on_event:
+                on_event({"type": "extract_start", "extractor": name})
+            before = {k for k in self._TRACKED if data.get(k)}
+            t0 = time.time()
             data = extractor.extract(soup, data)
+            duration_ms = int((time.time() - t0) * 1000)
+            after = {k for k in self._TRACKED if data.get(k)}
+            if on_event:
+                on_event({
+                    "type": "extract_done",
+                    "extractor": name,
+                    "fields_new": sorted(after - before),
+                    "duration_ms": duration_ms,
+                })
 
         data.pop("_og_description", None)
         return data

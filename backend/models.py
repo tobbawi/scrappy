@@ -57,3 +57,4 @@ class ScrapeJob(SQLModel, table=True):
     cases_found: int = 0
     cases_new: int = 0
     error: Optional[str] = None
+    log: Optional[str] = None  # JSON array of JobEvent dicts, written on completion

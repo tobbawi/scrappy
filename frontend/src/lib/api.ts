@@ -54,7 +54,26 @@ export interface ScrapeJob {
   cases_found: number;
   cases_new: number;
   error: string | null;
+  log: string | null;
 }
+
+// SSE event types emitted by /api/scrape/jobs/:id/stream
+export type JobEvent =
+  | { type: "job_started";     ts: string; company_count: number }
+  | { type: "llm_config";      ts: string; model: string; base_url: string }
+  | { type: "company_started"; ts: string; company_id: string; company_name: string; url_count: number }
+  | { type: "fetch_start";     ts: string; company_id: string; url_count: number; fetcher_type: string }
+  | { type: "fetch_done";      ts: string; company_id: string; fetched: number; duration_ms: number }
+  | { type: "case_start";      ts: string; url: string; index: number; total: number }
+  | { type: "extract_start";   ts: string; url: string; extractor: string }
+  | { type: "extract_done";    ts: string; url: string; extractor: string; fields_new: string[]; duration_ms: number }
+  | { type: "case_saved";      ts: string; url: string; case_id: string; is_new: boolean }
+  | { type: "case_skip";       ts: string; url: string; reason: string }
+  | { type: "case_error";      ts: string; url: string; error: string }
+  | { type: "company_done";    ts: string; company_id: string; company_name: string; cases_found: number; cases_new: number }
+  | { type: "company_error";   ts: string; company_id: string; error: string }
+  | { type: "job_done";        ts: string; cases_found: number; cases_new: number }
+  | { type: "job_failed";      ts: string; error: string };
 
 export interface Stats {
   total_companies: number;

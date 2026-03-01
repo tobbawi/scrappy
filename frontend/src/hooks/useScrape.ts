@@ -1,5 +1,6 @@
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api";
+import { api, JobEvent } from "@/lib/api";
 
 export function useScrapeJobs() {
   return useQuery({
@@ -25,6 +26,51 @@ export function useScrapeJob(id: string, enabled = true) {
       return job.status === "running" || job.status === "queued" ? 2000 : false;
     },
   });
+}
+
+/** Subscribe to live SSE events for a scrape job. */
+export function useJobStream(jobId: string) {
+  const [events, setEvents] = useState<JobEvent[]>([]);
+  const [connected, setConnected] = useState(false);
+  const [streamDone, setStreamDone] = useState(false);
+  const esRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    if (!jobId) return;
+    setEvents([]);
+    setStreamDone(false);
+
+    const es = new EventSource(`/api/scrape/jobs/${jobId}/stream`);
+    esRef.current = es;
+
+    es.onopen = () => setConnected(true);
+
+    es.onmessage = (e) => {
+      try {
+        const event: JobEvent = JSON.parse(e.data);
+        setEvents((prev) => [...prev, event]);
+      } catch {
+        // ignore malformed events
+      }
+    };
+
+    es.addEventListener("done", () => {
+      setStreamDone(true);
+      es.close();
+    });
+
+    es.onerror = () => {
+      setConnected(false);
+      es.close();
+    };
+
+    return () => {
+      es.close();
+      esRef.current = null;
+    };
+  }, [jobId]);
+
+  return { events, connected, streamDone };
 }
 
 export function useTriggerScrape() {
