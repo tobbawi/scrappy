@@ -45,7 +45,7 @@ export function Cases() {
       const next = new URLSearchParams(p);
       if (val) next.set(key, val);
       else next.delete(key);
-      next.delete("page");
+      if (key !== "page") next.delete("page");
       return next;
     });
   };
