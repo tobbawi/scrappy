@@ -53,5 +53,5 @@ Fields are populated by the extraction pipeline in priority order:
 |----------|-----------|------------------------|
 | 1 | MetaTagExtractor | `title`, `customer_logo_url`, `publish_date` |
 | 2 | SchemaOrgExtractor | `title`, `customer_name`, `publish_date` |
-| 3 | HeuristicExtractor | `title`, `customer_name`, `quote`, `results`, `customer_industry`, `tags` |
-| 4 | LLMExtractor | `customer_name`, `customer_country`, `challenge`, `solution`, `results`, `products_used` |
+| 3 | HeuristicExtractor | `title`, `customer_name`, `customer_industry`, `challenge`, `solution`, `results`, `quote`, `tags` |
+| 4 | LLMExtractor | `customer_name`, `customer_industry`, `customer_country`, `challenge`, `solution`, `results`, `products_used` |

@@ -59,8 +59,34 @@ Extractors run in order. Each extractor only fills fields that are still `None` 
 |-------|-----------|---------|
 | 1 | MetaTagExtractor | OG tags, Twitter card tags, `<meta name="date">` |
 | 2 | SchemaOrgExtractor | `<script type="application/ld+json">` (Article, BlogPosting) |
-| 3 | HeuristicExtractor | `<h1>`, blockquote, CSS class patterns, date regex |
-| 4 | LLMExtractor | Ollama LLM on `raw_text` (only if `ollama_enabled=true`) |
+| 3 | HeuristicExtractor | h1/h2/h3, section label patterns, blockquote, CSS classes, `<em>` quotes, description patterns |
+| 4 | LLMExtractor | Ollama LLM on first 8 000 chars of `raw_text` (auto-detected or configured) |
+
+### HeuristicExtractor section detection
+
+The heuristic extractor looks for **section label elements** — any `<h2>`–`<h4>` or `<p>`/`<span>`/`<div>`
+whose entire text matches a known label (e.g. "The challenge", "Solution", "Results") — and
+collects the sibling content that follows. This handles sites like Webflow-built pages where
+semantic headings are styled `<p>` elements.
+
+Recognised label groups:
+- **challenge**: "the challenge", "challenge", "the problem", "pain point", "context", …
+- **solution**: "the solution", "solution", "our approach", "how it works", "what we built", …
+- **results**: "results", "outcomes", "impact", "the numbers", "key results", …
+
+Customer name is also extracted from `og:description` / `og:title` patterns such as
+"for [Company]", "[Company]:", "helping [Company]".
+
+Inline quotes (text in `<em>`/`<strong>` wrapped in curly or straight quotation marks) are
+detected as the `quote` field.
+
+### Ollama auto-detection
+
+`detect_ollama()` in `pipeline.py` probes `http://localhost:11434/api/tags` at scrape time.
+If Ollama is running with at least one model loaded, it is used automatically — no manual
+settings configuration required. Preferred models in order: llama3.2, llama3, mistral, phi3, phi, gemma.
+
+If `ollama_enabled=True` in AppSettings, the explicitly configured model/URL/timeout are used instead.
 
 ### Extracted fields
 

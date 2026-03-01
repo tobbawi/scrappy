@@ -10,6 +10,7 @@ from .base import BaseExtractor
 # Fields the LLM is asked to fill (things heuristics frequently miss)
 LLM_FIELDS = [
     "customer_name",
+    "customer_industry",
     "customer_country",
     "challenge",
     "solution",
@@ -28,18 +29,19 @@ SYSTEM_PROMPT = (
 PROMPT_TEMPLATE = """\
 Extract the following fields from this customer case study. Return ONLY a JSON object.
 
-Fields:
+Fields to extract:
 {fields_block}
 
-Rules:
-- customer_name: the name of the customer/client company featured in the case study
-- customer_country: two-letter ISO country code if identifiable, else full country name
-- challenge: 1-3 sentences describing the customer's problem or challenge
-- solution: 1-3 sentences describing how the product solved it
-- results: key outcomes, metrics, or benefits achieved (can be a short paragraph)
-- products_used: JSON array of product/feature names mentioned, e.g. ["Analytics", "API"]
+Field rules:
+- customer_name: name of the customer/client company featured (not the vendor writing the case study)
+- customer_industry: industry vertical of the customer, e.g. "Tourism", "Healthcare", "Finance", "Retail", "Education", "Government", "Technology", "Manufacturing", "Logistics"
+- customer_country: two-letter ISO country code if identifiable (e.g. "BE", "US", "NL"), else full country name, else null
+- challenge: 1-3 sentences describing the customer's problem or challenge before the solution
+- solution: 1-3 sentences describing how the vendor/product solved the challenge
+- results: key outcomes, metrics, or benefits achieved (short paragraph or bullet points)
+- products_used: JSON array of specific product or technology names mentioned, e.g. ["GPT-4o", "Azure", "Custom API"]
 
-Case study text (truncated to 6000 chars):
+Case study text (first 8000 chars):
 ---
 {raw_text}
 ---
@@ -57,7 +59,7 @@ class LLMExtractor(BaseExtractor):
         if not missing:
             return data  # nothing to do
 
-        raw_text = (data.get("raw_text") or "")[:6000]
+        raw_text = (data.get("raw_text") or "")[:8000]
         if not raw_text.strip():
             return data
 
@@ -70,11 +72,13 @@ class LLMExtractor(BaseExtractor):
             print(f"[LLMExtractor] call failed: {e}")
             return data
 
+        null_values = {"null", "none", "n/a", "unknown", "not mentioned", "not specified",
+                       "not found", "not available", "not applicable", ""}
         for key in missing:
             value = extracted.get(key)
             if isinstance(value, list):
-                value = json.dumps(value)
-            if value and str(value).strip().lower() not in ("null", "none", "n/a", "unknown", ""):
+                value = json.dumps(value) if value else None
+            if value and str(value).strip().lower() not in null_values:
                 self._set_if_missing(data, key, str(value).strip())
 
         return data

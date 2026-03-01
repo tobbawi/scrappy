@@ -62,11 +62,19 @@ before running a scrape.
 
 - LLMExtractor is the 4th (last) step in the pipeline.
 - It only fills fields that are still `None` after prior extractors.
-- Input: first 6,000 characters of `raw_text`.
-- Output fields: `customer_name`, `customer_country`, `challenge`, `solution`, `results`, `products_used`.
+- Input: first 8,000 characters of `raw_text`.
+- Output fields: `customer_name`, `customer_industry`, `customer_country`, `challenge`, `solution`, `results`, `products_used`.
 - Request format: JSON (`format: "json"`) via Ollama `/api/chat`.
 - Handles both clean JSON and markdown-fenced JSON responses.
 - Timeout controlled by `AppSettings.ollama_timeout`.
+
+## Auto-detection (Embedded Ollama)
+
+`detect_ollama()` in `pipeline.py` probes `http://localhost:11434/api/tags` at the start of each scrape job.
+If Ollama is reachable with at least one model, it is used automatically — even if `ollama_enabled=False` in settings.
+Explicit settings always override auto-detection when `ollama_enabled=True`.
+
+Preferred model selection order: `llama3.2`, `llama3`, `mistral`, `phi3`, `phi`, `gemma`.
 
 ---
 

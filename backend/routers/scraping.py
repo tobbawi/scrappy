@@ -62,12 +62,17 @@ def run_scrape_job(job_id: str, company_id: Optional[str]):
                     from routers.settings import get_or_create_settings
 
                     app_settings = get_or_create_settings(session)
-                    llm_config = {
-                        "enabled": app_settings.ollama_enabled,
-                        "base_url": app_settings.ollama_base_url,
-                        "model": app_settings.ollama_model,
-                        "timeout": app_settings.ollama_timeout,
-                    }
+                    if app_settings.ollama_enabled:
+                        llm_config = {
+                            "enabled": True,
+                            "base_url": app_settings.ollama_base_url,
+                            "model": app_settings.ollama_model,
+                            "timeout": app_settings.ollama_timeout,
+                        }
+                    else:
+                        # Auto-detect a running Ollama instance
+                        from scrapers.extractors.pipeline import detect_ollama
+                        llm_config = detect_ollama()
                     pipeline = ExtractionPipeline(llm_config=llm_config)
                     html_map = fetch_batch(urls, company.fetcher_type)
 
