@@ -1,0 +1,156 @@
+// Typed API client
+
+export interface Company {
+  id: string;
+  name: string;
+  listing_url: string;
+  fetcher_type: "static" | "dynamic" | "stealthy";
+  case_path_prefix: string | null;
+  active: boolean;
+  created_at: string;
+  last_scraped_at: string | null;
+  scrape_status: "idle" | "running" | "error" | "success";
+  error_message: string | null;
+}
+
+export interface ReferenceCase {
+  id: string;
+  company_id: string;
+  url: string;
+  title: string | null;
+  customer_name: string | null;
+  customer_industry: string | null;
+  customer_country: string | null;
+  customer_logo_url: string | null;
+  challenge: string | null;
+  solution: string | null;
+  results: string | null;
+  products_used: string | null;
+  quote: string | null;
+  quote_author: string | null;
+  quote_author_company: string | null;
+  publish_date: string | null;
+  tags: string | null;
+  first_seen: string;
+  last_checked: string;
+  content_hash: string;
+  raw_text: string | null;
+}
+
+export interface PaginatedCases {
+  items: ReferenceCase[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
+}
+
+export interface ScrapeJob {
+  id: string;
+  company_id: string | null;
+  status: "queued" | "running" | "done" | "failed";
+  started_at: string | null;
+  finished_at: string | null;
+  cases_found: number;
+  cases_new: number;
+  error: string | null;
+}
+
+export interface Stats {
+  total_companies: number;
+  active_companies: number;
+  total_cases: number;
+  new_cases_this_week: number;
+  last_scrape: string | null;
+  companies_by_status: Record<string, number>;
+}
+
+export interface AppSettings {
+  ollama_enabled: boolean;
+  ollama_base_url: string;
+  ollama_model: string;
+  ollama_timeout: number;
+}
+
+export interface OllamaStatus {
+  reachable: boolean;
+  model_available: boolean;
+  available_models?: string[];
+  error?: string;
+}
+
+export interface DigestResponse {
+  since: string;
+  total_new: number;
+  by_company: Record<string, Array<{
+    id: string;
+    title: string | null;
+    customer_name: string | null;
+    url: string;
+    first_seen: string;
+  }>>;
+}
+
+const BASE = "/api";
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, {
+    headers: { "Content-Type": "application/json", ...init?.headers },
+    ...init,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`${res.status} ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+// Companies
+export const api = {
+  companies: {
+    list: () => request<Company[]>("/companies"),
+    create: (data: { name: string; listing_url: string; fetcher_type?: string; case_path_prefix?: string | null; active?: boolean }) =>
+      request<Company>("/companies", { method: "POST", body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Company>) =>
+      request<Company>(`/companies/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      fetch(`${BASE}/companies/${id}`, { method: "DELETE" }),
+  },
+
+  cases: {
+    list: (params: Record<string, string | number | boolean | undefined>) => {
+      const qs = new URLSearchParams();
+      for (const [k, v] of Object.entries(params)) {
+        if (v !== undefined && v !== "") qs.set(k, String(v));
+      }
+      return request<PaginatedCases>(`/cases?${qs}`);
+    },
+    get: (id: string) => request<ReferenceCase>(`/cases/${id}`),
+  },
+
+  scrape: {
+    trigger: (company_id: string = "all") =>
+      request<ScrapeJob>("/scrape", { method: "POST", body: JSON.stringify({ company_id }) }),
+    jobs: () => request<ScrapeJob[]>("/scrape/jobs"),
+    job: (id: string) => request<ScrapeJob>(`/scrape/jobs/${id}`),
+  },
+
+  digest: {
+    get: (params?: { since?: string; format?: "json" | "html" | "markdown" }) => {
+      const qs = new URLSearchParams(params as Record<string, string>);
+      return request<DigestResponse>(`/digest?${qs}`);
+    },
+  },
+
+  stats: {
+    get: () => request<Stats>("/stats"),
+  },
+
+  settings: {
+    get: () => request<AppSettings>("/settings"),
+    update: (data: Partial<AppSettings>) =>
+      request<AppSettings>("/settings", { method: "PATCH", body: JSON.stringify(data) }),
+    ollamaModels: () => request<{ models: string[]; reachable: boolean; error?: string }>("/settings/ollama/models"),
+    ollamaTest: () => request<OllamaStatus>("/settings/ollama/test", { method: "POST" }),
+  },
+};
