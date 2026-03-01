@@ -16,7 +16,7 @@ async def lifespan(app: FastAPI):
     from sqlalchemy import text
     with engine.connect() as conn:
         for stmt in [
-            "ALTER TABLE scrape_job ADD COLUMN log TEXT",
+            "ALTER TABLE scrapejob ADD COLUMN log TEXT",
         ]:
             try:
                 conn.execute(text(stmt))
