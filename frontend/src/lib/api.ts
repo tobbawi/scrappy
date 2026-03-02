@@ -116,16 +116,21 @@ export interface Stats {
   companies_by_status: Record<string, number>;
 }
 
+export type LlmProvider = "none" | "ollama" | "openai";
+
 export interface AppSettings {
-  ollama_enabled: boolean;
+  llm_provider: LlmProvider;
   ollama_base_url: string;
   ollama_model: string;
   ollama_timeout: number;
+  openai_base_url: string;
+  openai_model: string;
+  openai_timeout: number;
   scraper_enabled_fields: string[];
   scraper_heuristic_labels: Record<string, string[]>;
 }
 
-export interface OllamaStatus {
+export interface LlmStatus {
   reachable: boolean;
   model_available: boolean;
   available_models?: string[];
@@ -223,7 +228,11 @@ export const api = {
     get: () => request<AppSettings>("/settings"),
     update: (data: Partial<AppSettings>) =>
       request<AppSettings>("/settings", { method: "PATCH", body: JSON.stringify(data) }),
+    llmModels: (provider: string) =>
+      request<{ models: string[]; reachable: boolean; error?: string }>(`/settings/llm/models?provider=${provider}`),
+    llmTest: (provider: string) =>
+      request<LlmStatus>(`/settings/llm/test?provider=${provider}`, { method: "POST" }),
     ollamaModels: () => request<{ models: string[]; reachable: boolean; error?: string }>("/settings/ollama/models"),
-    ollamaTest: () => request<OllamaStatus>("/settings/ollama/test", { method: "POST" }),
+    ollamaTest: () => request<LlmStatus>("/settings/ollama/test", { method: "POST" }),
   },
 };

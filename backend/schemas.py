@@ -116,32 +116,54 @@ class StatsRead(BaseModel):
 
 
 class SettingsRead(BaseModel):
-    ollama_enabled: bool
+    llm_provider: str
     ollama_base_url: str
     ollama_model: str
     ollama_timeout: int
+    openai_base_url: str
+    openai_model: str
+    openai_timeout: int
     scraper_enabled_fields: List[str]
     scraper_heuristic_labels: dict
 
 
+def _validate_url(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return v
+    parsed = urlparse(v)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError("Only http/https URLs are allowed")
+    if not parsed.hostname:
+        raise ValueError("URL must include a hostname")
+    return v
+
+
 class SettingsUpdate(BaseModel):
-    ollama_enabled: Optional[bool] = None
+    llm_provider: Optional[str] = None
     ollama_base_url: Optional[str] = None
     ollama_model: Optional[str] = None
     ollama_timeout: Optional[int] = None
+    openai_base_url: Optional[str] = None
+    openai_model: Optional[str] = None
+    openai_timeout: Optional[int] = None
     scraper_enabled_fields: Optional[List[str]] = None
     scraper_heuristic_labels: Optional[dict] = None
 
     @field_validator("ollama_base_url")
     @classmethod
     def validate_ollama_url(cls, v: Optional[str]) -> Optional[str]:
-        if v is None:
-            return v
-        parsed = urlparse(v)
-        if parsed.scheme not in ("http", "https"):
-            raise ValueError("Only http/https URLs are allowed")
-        if not parsed.hostname:
-            raise ValueError("URL must include a hostname")
+        return _validate_url(v)
+
+    @field_validator("openai_base_url")
+    @classmethod
+    def validate_openai_url(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_url(v)
+
+    @field_validator("llm_provider")
+    @classmethod
+    def validate_llm_provider(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("none", "ollama", "openai"):
+            raise ValueError("llm_provider must be 'none', 'ollama', or 'openai'")
         return v
 
 

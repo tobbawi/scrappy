@@ -59,6 +59,7 @@ class ExtractionPipeline:
                 base_url=llm_config["base_url"],
                 model=llm_config["model"],
                 timeout=llm_config.get("timeout", 60),
+                provider=llm_config.get("provider", "ollama"),
             ))
 
     # Fields reported in extractor events (excludes internal/raw fields)

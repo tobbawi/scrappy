@@ -328,3 +328,28 @@ boilerplate sections captured as content, and unstripped quote author prefixes.
 - Boilerplate footer text no longer stored as challenge/solution/results.
 - Quote authors no longer carry leading dash prefixes.
 - No schema or API changes required; purely scraper-internal.
+
+---
+
+## ADR-017 — Generic OpenAI-Compatible LLM Provider
+
+**Date:** 2026-03
+
+**Context:** LLM extraction only supported Ollama. Users running llama.cpp, vLLM, LocalAI,
+or LM Studio had no way to use their inference server. All of these expose an
+OpenAI-compatible API (`/v1/chat/completions`, `/v1/models`).
+
+**Decision:** Replace the `ollama_enabled` boolean with a `llm_provider` selector
+(`"none"` | `"ollama"` | `"openai"`). Add parallel `openai_base_url`, `openai_model`,
+`openai_timeout` settings fields. `LLMExtractor` gains a `provider` parameter and
+dispatches to either the Ollama or OpenAI-compatible chat completions API. Existing
+`ollama_enabled=true` rows are auto-migrated to `llm_provider="ollama"` on startup.
+Generic `/api/settings/llm/models` and `/api/settings/llm/test` endpoints accept a
+`provider` query parameter; legacy `/ollama/*` endpoints are kept as aliases.
+
+**Consequences:**
+- Any server implementing `/v1/chat/completions` and `/v1/models` now works out of the box.
+- `ollama_enabled` column retained in the DB for migration but no longer read by app logic.
+- Frontend shows a provider selector (None / Ollama / OpenAI-compatible) with
+  provider-specific config fields.
+- `provider="none"` still falls back to auto-detecting a local Ollama instance.

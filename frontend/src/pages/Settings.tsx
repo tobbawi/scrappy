@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useSettings, useUpdateSettings, useOllamaModels, useOllamaTest } from "@/hooks/useSettings";
+import { useSettings, useUpdateSettings, useLlmModels, useLlmTest } from "@/hooks/useSettings";
+import { LlmProvider } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,23 +54,37 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 export function Settings() {
   const { data: settings, isLoading } = useSettings();
   const { mutate: updateSettings, isPending: isSaving, error: saveError } = useUpdateSettings();
-  const { data: modelsData, refetch: refetchModels, isFetching: isFetchingModels, error: modelsError } = useOllamaModels();
-  const { mutate: testOllama, isPending: isTesting, data: testResult } = useOllamaTest();
 
-  const [baseUrl, setBaseUrl] = useState("");
-  const [model, setModel] = useState("");
-  const [timeout, setTimeout_] = useState(60);
+  const [provider, setProvider] = useState<LlmProvider>("none");
 
-  // Scraper field config state: disabled fields + extra heuristic labels
+  // Ollama fields
+  const [ollamaUrl, setOllamaUrl] = useState("http://localhost:11434");
+  const [ollamaModel, setOllamaModel] = useState("");
+  const [ollamaTimeout, setOllamaTimeout] = useState(60);
+
+  // OpenAI-compatible fields
+  const [openaiUrl, setOpenaiUrl] = useState("http://localhost:8080");
+  const [openaiModel, setOpenaiModel] = useState("");
+  const [openaiTimeout, setOpenaiTimeout] = useState(60);
+
+  // LLM models & test — use the active provider
+  const { data: modelsData, refetch: refetchModels, isFetching: isFetchingModels, error: modelsError } = useLlmModels(provider);
+  const { mutate: testLlm, isPending: isTesting, data: testResult, reset: resetTest } = useLlmTest();
+
+  // Scraper field config state
   const [disabledFields, setDisabledFields] = useState<string[]>([]);
   const [heuristicLabels, setHeuristicLabels] = useState<Record<string, string>>({});
   const [scraperSaveError, setScraperSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (settings) {
-      setBaseUrl(settings.ollama_base_url);
-      setModel(settings.ollama_model);
-      setTimeout_(settings.ollama_timeout);
+      setProvider(settings.llm_provider);
+      setOllamaUrl(settings.ollama_base_url);
+      setOllamaModel(settings.ollama_model);
+      setOllamaTimeout(settings.ollama_timeout);
+      setOpenaiUrl(settings.openai_base_url);
+      setOpenaiModel(settings.openai_model);
+      setOpenaiTimeout(settings.openai_timeout);
       setDisabledFields(settings.scraper_enabled_fields ?? []);
       const labelsAsText: Record<string, string> = {};
       for (const [field, labels] of Object.entries(settings.scraper_heuristic_labels ?? {})) {
@@ -79,13 +94,27 @@ export function Settings() {
     }
   }, [settings]);
 
-  if (isLoading) return <div className="p-6 text-muted-foreground">Loading…</div>;
+  // Reset test result when switching providers
+  useEffect(() => {
+    resetTest();
+  }, [provider, resetTest]);
 
-  const ollamaEnabled = settings?.ollama_enabled ?? false;
+  if (isLoading) return <div className="p-6 text-muted-foreground">Loading...</div>;
+
   const availableModels = modelsData?.models ?? [];
 
-  const handleSaveOllama = () => {
-    updateSettings({ ollama_base_url: baseUrl, ollama_model: model, ollama_timeout: timeout });
+  const handleProviderChange = (v: string) => {
+    const newProvider = v as LlmProvider;
+    setProvider(newProvider);
+    updateSettings({ llm_provider: newProvider });
+  };
+
+  const handleSaveLlm = () => {
+    if (provider === "ollama") {
+      updateSettings({ ollama_base_url: ollamaUrl, ollama_model: ollamaModel, ollama_timeout: ollamaTimeout });
+    } else if (provider === "openai") {
+      updateSettings({ openai_base_url: openaiUrl, openai_model: openaiModel, openai_timeout: openaiTimeout });
+    }
   };
 
   const handleSaveScraperConfig = () => {
@@ -107,143 +136,172 @@ export function Settings() {
     );
   };
 
+  const currentBaseUrl = provider === "openai" ? openaiUrl : ollamaUrl;
+  const currentModel = provider === "openai" ? openaiModel : ollamaModel;
+
   return (
     <div className="p-6 max-w-xl space-y-8">
       <h1 className="text-2xl font-bold">Settings</h1>
 
-      {/* Ollama / LLM */}
+      {/* LLM Provider */}
       <section>
-        <SectionHeader>Local LLM (Ollama)</SectionHeader>
+        <SectionHeader>LLM Extraction</SectionHeader>
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Enable Ollama extraction</p>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Runs after heuristic extraction to fill in missing fields.
-              </p>
-            </div>
-            <Switch
-              checked={ollamaEnabled}
-              onChange={(v) => updateSettings({ ollama_enabled: v })}
-            />
+          <div className="space-y-1">
+            <Label>Provider</Label>
+            <Select value={provider} onValueChange={handleProviderChange}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">None (disabled)</SelectItem>
+                <SelectItem value="ollama">Ollama</SelectItem>
+                <SelectItem value="openai">OpenAI-compatible</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Runs after heuristic extraction to fill in missing fields.
+            </p>
           </div>
 
-          <div className={`space-y-4 ${!ollamaEnabled ? "opacity-50 pointer-events-none" : ""}`}>
-            <div className="space-y-1">
-              <Label>Ollama base URL</Label>
-              <div className="flex gap-2">
+          {provider !== "none" && (
+            <div className="space-y-4">
+              {/* Base URL */}
+              <div className="space-y-1">
+                <Label>{provider === "ollama" ? "Ollama base URL" : "Server base URL"}</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={provider === "ollama" ? ollamaUrl : openaiUrl}
+                    onChange={(e) => provider === "ollama" ? setOllamaUrl(e.target.value) : setOpenaiUrl(e.target.value)}
+                    placeholder={provider === "ollama" ? "http://localhost:11434" : "http://localhost:8080"}
+                  />
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    title="Refresh models"
+                    onClick={() => refetchModels()}
+                    disabled={isFetchingModels}
+                  >
+                    {isFetchingModels ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  </Button>
+                </div>
+                {provider === "openai" && (
+                  <p className="text-xs text-muted-foreground">
+                    Works with llama.cpp, vLLM, LocalAI, LM Studio, etc.
+                  </p>
+                )}
+                {(modelsData || modelsError) && (
+                  <div className="flex items-center gap-1.5 text-xs mt-1">
+                    {modelsData?.reachable
+                      ? <><CheckCircle className="h-3.5 w-3.5 text-green-600" /><span className="text-green-700">Server reachable &middot; {availableModels.length} model(s) found</span></>
+                      : <><XCircle className="h-3.5 w-3.5 text-destructive" /><span className="text-destructive">{modelsData?.error ?? (modelsError instanceof Error ? modelsError.message : "Cannot reach server")}</span></>
+                    }
+                  </div>
+                )}
+              </div>
+
+              {/* Model */}
+              <div className="space-y-1">
+                <Label>Model</Label>
+                {availableModels.length > 0 ? (
+                  <Select
+                    value={provider === "ollama" ? ollamaModel : openaiModel}
+                    onValueChange={(v) => provider === "ollama" ? setOllamaModel(v) : setOpenaiModel(v)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableModels.map((m) => (
+                        <SelectItem key={m} value={m}>{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <Input
+                    value={provider === "ollama" ? ollamaModel : openaiModel}
+                    onChange={(e) => provider === "ollama" ? setOllamaModel(e.target.value) : setOpenaiModel(e.target.value)}
+                    placeholder={provider === "ollama" ? "llama3.2" : "model-name"}
+                  />
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {provider === "ollama"
+                    ? <>Must support JSON mode. Recommended: <code>llama3.2</code>, <code>mistral</code>, <code>qwen2.5</code></>
+                    : "Enter the model name served by your inference server."}
+                </p>
+              </div>
+
+              {/* Timeout */}
+              <div className="space-y-1">
+                <Label>Timeout per page (seconds)</Label>
                 <Input
-                  value={baseUrl}
-                  onChange={(e) => setBaseUrl(e.target.value)}
-                  placeholder="http://localhost:11434"
+                  type="number"
+                  min={10}
+                  max={300}
+                  value={provider === "ollama" ? ollamaTimeout : openaiTimeout}
+                  onChange={(e) => {
+                    const v = Number(e.target.value);
+                    provider === "ollama" ? setOllamaTimeout(v) : setOpenaiTimeout(v);
+                  }}
+                  className="w-28"
                 />
+                <p className="text-xs text-muted-foreground">LLM call timeout per case page. Increase for slower hardware.</p>
+              </div>
+
+              {saveError && (
+                <p className="text-sm text-destructive">{saveError instanceof Error ? saveError.message : "Save failed"}</p>
+              )}
+              <div className="flex items-center gap-2 pt-1">
+                <Button size="sm" onClick={handleSaveLlm} disabled={isSaving}>
+                  {isSaving ? "Saving..." : "Save"}
+                </Button>
                 <Button
+                  size="sm"
                   variant="outline"
-                  size="icon"
-                  title="Check connection"
-                  onClick={() => { refetchModels(); }}
-                  disabled={isFetchingModels}
+                  onClick={() => testLlm(provider)}
+                  disabled={isTesting}
                 >
-                  {isFetchingModels ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                  {isTesting ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Testing...</> : "Test connection"}
                 </Button>
               </div>
-              {(modelsData || modelsError) && (
-                <div className="flex items-center gap-1.5 text-xs mt-1">
-                  {modelsData?.reachable
-                    ? <><CheckCircle className="h-3.5 w-3.5 text-green-600" /><span className="text-green-700">Ollama reachable · {availableModels.length} model(s) found</span></>
-                    : <><XCircle className="h-3.5 w-3.5 text-destructive" /><span className="text-destructive">{modelsData?.error ?? (modelsError instanceof Error ? modelsError.message : "Cannot reach Ollama")}</span></>
-                  }
-                </div>
-              )}
-            </div>
 
-            <div className="space-y-1">
-              <Label>Model</Label>
-              {availableModels.length > 0 ? (
-                <Select value={model} onValueChange={setModel}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableModels.map((m) => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  placeholder="llama3.2"
-                />
-              )}
-              <p className="text-xs text-muted-foreground">
-                Must support JSON mode. Recommended: <code>llama3.2</code>, <code>mistral</code>, <code>qwen2.5</code>
-              </p>
-            </div>
-
-            <div className="space-y-1">
-              <Label>Timeout per page (seconds)</Label>
-              <Input
-                type="number"
-                min={10}
-                max={300}
-                value={timeout}
-                onChange={(e) => setTimeout_(Number(e.target.value))}
-                className="w-28"
-              />
-              <p className="text-xs text-muted-foreground">LLM call timeout per case page. Increase for slower hardware.</p>
-            </div>
-
-            {saveError && (
-              <p className="text-sm text-destructive">{saveError instanceof Error ? saveError.message : "Save failed"}</p>
-            )}
-            <div className="flex items-center gap-2 pt-1">
-              <Button size="sm" onClick={handleSaveOllama} disabled={isSaving}>
-                {isSaving ? "Saving…" : "Save"}
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => testOllama()}
-                disabled={isTesting}
-              >
-                {isTesting ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Testing…</> : "Test connection"}
-              </Button>
-            </div>
-
-            {testResult && (
-              <div className="border rounded-md p-3 text-sm space-y-1 bg-muted/30">
-                <div className="flex items-center gap-2">
-                  {testResult.reachable
-                    ? <CheckCircle className="h-4 w-4 text-green-600" />
-                    : <XCircle className="h-4 w-4 text-destructive" />}
-                  <span>{testResult.reachable ? "Ollama is reachable" : "Cannot reach Ollama"}</span>
-                </div>
-                {testResult.reachable && (
+              {testResult && (
+                <div className="border rounded-md p-3 text-sm space-y-1 bg-muted/30">
                   <div className="flex items-center gap-2">
-                    {testResult.model_available
+                    {testResult.reachable
                       ? <CheckCircle className="h-4 w-4 text-green-600" />
                       : <XCircle className="h-4 w-4 text-destructive" />}
-                    <span>
-                      Model <code className="text-xs bg-muted px-1 rounded">{model}</code>{" "}
-                      {testResult.model_available ? "is available" : "not found — run: ollama pull " + model}
-                    </span>
+                    <span>{testResult.reachable ? "Server is reachable" : "Cannot reach server"}</span>
                   </div>
-                )}
-                {testResult.available_models && testResult.available_models.length > 0 && (
-                  <div className="flex flex-wrap gap-1 pt-1">
-                    {testResult.available_models.map((m) => (
-                      <Badge key={m} variant="secondary" className="text-xs font-mono">{m}</Badge>
-                    ))}
-                  </div>
-                )}
-                {testResult.error && (
-                  <p className="text-destructive text-xs">{testResult.error}</p>
-                )}
-              </div>
-            )}
-          </div>
+                  {testResult.reachable && (
+                    <div className="flex items-center gap-2">
+                      {testResult.model_available
+                        ? <CheckCircle className="h-4 w-4 text-green-600" />
+                        : <XCircle className="h-4 w-4 text-destructive" />}
+                      <span>
+                        Model <code className="text-xs bg-muted px-1 rounded">{currentModel}</code>{" "}
+                        {testResult.model_available
+                          ? "is available"
+                          : provider === "ollama"
+                            ? "not found \u2014 run: ollama pull " + currentModel
+                            : "not found"}
+                      </span>
+                    </div>
+                  )}
+                  {testResult.available_models && testResult.available_models.length > 0 && (
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {testResult.available_models.map((m) => (
+                        <Badge key={m} variant="secondary" className="text-xs font-mono">{m}</Badge>
+                      ))}
+                    </div>
+                  )}
+                  {testResult.error && (
+                    <p className="text-destructive text-xs">{testResult.error}</p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
@@ -285,7 +343,7 @@ export function Settings() {
             <p className="text-sm text-destructive">{scraperSaveError}</p>
           )}
           <Button size="sm" onClick={handleSaveScraperConfig} disabled={isSaving}>
-            {isSaving ? "Saving…" : "Save"}
+            {isSaving ? "Saving..." : "Save"}
           </Button>
         </div>
       </section>
@@ -305,10 +363,10 @@ export function Settings() {
           <p>Scrappy v0.1.0 — Local reference case tracker</p>
           <p>Database: <code className="text-xs bg-muted px-1 rounded">data/scrappy.db</code></p>
           <p>
-            Extraction pipeline: OG tags → JSON-LD → Heuristics
-            {ollamaEnabled
-              ? <> → <Badge variant="default" className="text-xs ml-1">LLM ({model})</Badge></>
-              : " → LLM (disabled)"}
+            Extraction pipeline: OG tags &rarr; JSON-LD &rarr; Heuristics
+            {provider !== "none"
+              ? <> &rarr; <Badge variant="default" className="text-xs ml-1">LLM ({currentModel || provider})</Badge></>
+              : " \u2192 LLM (disabled)"}
           </p>
         </div>
       </section>

@@ -20,12 +20,26 @@ async def lifespan(app: FastAPI):
             "ALTER TABLE scrapejob ADD COLUMN log TEXT",
             "ALTER TABLE appsettings ADD COLUMN scraper_enabled_fields TEXT DEFAULT '[]'",
             "ALTER TABLE appsettings ADD COLUMN scraper_heuristic_labels TEXT DEFAULT '{}'",
+            "ALTER TABLE appsettings ADD COLUMN llm_provider TEXT DEFAULT 'none'",
+            "ALTER TABLE appsettings ADD COLUMN openai_base_url TEXT DEFAULT 'http://localhost:8080'",
+            "ALTER TABLE appsettings ADD COLUMN openai_model TEXT DEFAULT ''",
+            "ALTER TABLE appsettings ADD COLUMN openai_timeout INTEGER DEFAULT 60",
         ]:
             try:
                 conn.execute(text(stmt))
                 conn.commit()
             except Exception:
                 pass  # column already exists
+
+        # Data migration: ollama_enabled → llm_provider
+        try:
+            conn.execute(text(
+                "UPDATE appsettings SET llm_provider = 'ollama' "
+                "WHERE ollama_enabled = 1 AND llm_provider = 'none'"
+            ))
+            conn.commit()
+        except Exception:
+            pass
 
     # Seed default settings row if absent
     from sqlmodel import Session

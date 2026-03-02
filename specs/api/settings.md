@@ -13,11 +13,15 @@ Returns the current application settings.
 **Response `200`**
 ```json
 {
-  "id": 1,
-  "ollama_enabled": false,
+  "llm_provider": "none",
   "ollama_base_url": "http://localhost:11434",
   "ollama_model": "llama3.2",
-  "ollama_timeout": 60
+  "ollama_timeout": 60,
+  "openai_base_url": "http://localhost:8080",
+  "openai_model": "",
+  "openai_timeout": 60,
+  "scraper_enabled_fields": [],
+  "scraper_heuristic_labels": {}
 }
 ```
 
@@ -30,27 +34,39 @@ Update settings fields. All fields optional.
 **Request body**
 ```json
 {
-  "ollama_enabled": true,
+  "llm_provider": "ollama",
   "ollama_base_url": "http://localhost:11434",
   "ollama_model": "llama3.2",
-  "ollama_timeout": 90
+  "ollama_timeout": 90,
+  "openai_base_url": "http://localhost:8080",
+  "openai_model": "my-model",
+  "openai_timeout": 60
 }
 ```
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `ollama_enabled` | bool | Enable/disable LLM extraction |
+| `llm_provider` | string | `"none"` \| `"ollama"` \| `"openai"` — selects LLM backend |
 | `ollama_base_url` | string (URL) | Ollama server base URL |
 | `ollama_model` | string | Model name (must be pulled in Ollama) |
 | `ollama_timeout` | int (10–300) | Seconds to wait per LLM call |
+| `openai_base_url` | string (URL) | OpenAI-compatible server base URL |
+| `openai_model` | string | Model name served by the inference server |
+| `openai_timeout` | int (10–300) | Seconds to wait per LLM call |
 
 **Response `200`** — Updated AppSettings object.
 
 ---
 
-## GET /api/settings/ollama/models
+## GET /api/settings/llm/models?provider=
 
-List models available in the configured Ollama instance.
+Fetch available models from the configured LLM provider.
+
+**Query params**
+
+| Param | Type | Default | Notes |
+|-------|------|---------|-------|
+| `provider` | string | `"ollama"` | `"ollama"` or `"openai"` |
 
 **Response `200`**
 ```json
@@ -61,7 +77,7 @@ List models available in the configured Ollama instance.
 }
 ```
 
-If Ollama is unreachable:
+If server is unreachable:
 ```json
 {
   "reachable": false,
@@ -72,9 +88,15 @@ If Ollama is unreachable:
 
 ---
 
-## POST /api/settings/ollama/test
+## POST /api/settings/llm/test?provider=
 
-Test connectivity to Ollama and verify the configured model is available.
+Test connectivity to the LLM provider and verify the configured model is available.
+
+**Query params**
+
+| Param | Type | Default | Notes |
+|-------|------|---------|-------|
+| `provider` | string | `"ollama"` | `"ollama"` or `"openai"` |
 
 **Response `200`**
 ```json
@@ -88,7 +110,21 @@ Test connectivity to Ollama and verify the configured model is available.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `reachable` | bool | Can reach `ollama_base_url` |
+| `reachable` | bool | Can reach the configured base URL |
 | `model_available` | bool | Configured model is in available models list |
-| `available_models` | string[] | All models found in Ollama |
+| `available_models` | string[] | All models found on the server |
 | `error` | string \| null | Error message if unreachable |
+
+---
+
+## Legacy Endpoints
+
+These endpoints are kept for backward compatibility and delegate internally.
+
+### GET /api/settings/ollama/models
+
+Equivalent to `GET /api/settings/llm/models?provider=ollama`.
+
+### POST /api/settings/ollama/test
+
+Equivalent to `POST /api/settings/llm/test?provider=ollama`.

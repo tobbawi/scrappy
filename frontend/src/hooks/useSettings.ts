@@ -16,6 +16,23 @@ export function useUpdateSettings() {
   });
 }
 
+export function useLlmModels(provider: string) {
+  return useQuery({
+    queryKey: ["llm-models", provider],
+    queryFn: () => api.settings.llmModels(provider),
+    enabled: provider !== "none",
+    retry: false,
+    staleTime: 30_000,
+  });
+}
+
+export function useLlmTest() {
+  return useMutation({
+    mutationFn: (provider: string) => api.settings.llmTest(provider),
+  });
+}
+
+// Keep legacy hooks for backward compat
 export function useOllamaModels() {
   return useQuery({
     queryKey: ["ollama-models"],

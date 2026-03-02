@@ -1,6 +1,6 @@
 """
-LLM extractor — uses a local Ollama model to fill fields that earlier extractors missed.
-Only runs when ollama_enabled=True in AppSettings.
+LLM extractor — uses a local LLM (Ollama or OpenAI-compatible) to fill fields
+that earlier extractors missed.
 """
 import json
 import httpx
@@ -52,11 +52,29 @@ Case study text (first 8000 chars):
 """
 
 
+def _parse_json(content: str) -> dict:
+    """Parse JSON from LLM response, stripping markdown fences if present."""
+    content = content.strip()
+    if content.startswith("```"):
+        parts = content.split("```")
+        if len(parts) >= 2:
+            content = parts[1]
+            if content.startswith("json"):
+                content = content[4:]
+            content = content.strip()
+    try:
+        return json.loads(content)
+    except json.JSONDecodeError as e:
+        print(f"[LLMExtractor] JSON parse failed: {e} — raw: {content[:200]}")
+        return {}
+
+
 class LLMExtractor(BaseExtractor):
-    def __init__(self, base_url: str, model: str, timeout: int = 60):
+    def __init__(self, base_url: str, model: str, timeout: int = 60, provider: str = "ollama"):
         self.base_url = base_url.rstrip("/")
         self.model = model
         self.timeout = timeout
+        self.provider = provider
 
     def extract(self, soup: BeautifulSoup, data: dict) -> dict:
         missing = [f for f in LLM_FIELDS if not data.get(f)]
@@ -71,7 +89,7 @@ class LLMExtractor(BaseExtractor):
         prompt = PROMPT_TEMPLATE.format(fields_block=fields_block, raw_text=raw_text)
 
         try:
-            extracted = self._call_ollama(prompt)
+            extracted = self._call_llm(prompt)
         except Exception as e:
             print(f"[LLMExtractor] call failed: {e}")
             return data
@@ -86,6 +104,11 @@ class LLMExtractor(BaseExtractor):
                 self._set_if_missing(data, key, str(value).strip())
 
         return data
+
+    def _call_llm(self, prompt: str) -> dict:
+        if self.provider == "openai":
+            return self._call_openai(prompt)
+        return self._call_ollama(prompt)
 
     def _call_ollama(self, prompt: str) -> dict:
         payload = {
@@ -102,17 +125,21 @@ class LLMExtractor(BaseExtractor):
             r.raise_for_status()
             body = r.json()
 
-        content = body["message"]["content"].strip()
-        # Strip markdown code fences if model ignores format directive
-        if content.startswith("```"):
-            parts = content.split("```")
-            if len(parts) >= 2:
-                content = parts[1]
-                if content.startswith("json"):
-                    content = content[4:]
-                content = content.strip()
-        try:
-            return json.loads(content)
-        except json.JSONDecodeError as e:
-            print(f"[LLMExtractor] JSON parse failed: {e} — raw: {content[:200]}")
-            return {}
+        return _parse_json(body["message"]["content"])
+
+    def _call_openai(self, prompt: str) -> dict:
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": prompt},
+            ],
+            "response_format": {"type": "json_object"},
+            "stream": False,
+        }
+        with httpx.Client(timeout=self.timeout) as client:
+            r = client.post(f"{self.base_url}/v1/chat/completions", json=payload)
+            r.raise_for_status()
+            body = r.json()
+
+        return _parse_json(body["choices"][0]["message"]["content"])

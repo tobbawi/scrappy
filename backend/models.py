@@ -47,10 +47,14 @@ class ReferenceCase(SQLModel, table=True):
 
 class AppSettings(SQLModel, table=True):
     id: int = Field(default=1, primary_key=True)
-    ollama_enabled: bool = False
+    ollama_enabled: bool = False  # legacy, kept for migration
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
     ollama_timeout: int = 60  # seconds per LLM call
+    llm_provider: str = "none"  # none | ollama | openai
+    openai_base_url: str = "http://localhost:8080"
+    openai_model: str = ""
+    openai_timeout: int = 60
     scraper_enabled_fields: str = Field(
         default="[]",
         sa_column=Column(TEXT),

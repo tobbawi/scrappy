@@ -118,14 +118,25 @@ def run_scrape_job(job_id: str, company_id: Optional[str]):
 
             # Resolve LLM config once for the whole job
             app_settings = get_or_create_settings(session)
-            if app_settings.ollama_enabled:
+            provider = app_settings.llm_provider
+            if provider == "ollama":
                 llm_config = {
                     "enabled": True,
+                    "provider": "ollama",
                     "base_url": app_settings.ollama_base_url,
                     "model": app_settings.ollama_model,
                     "timeout": app_settings.ollama_timeout,
                 }
+            elif provider == "openai":
+                llm_config = {
+                    "enabled": True,
+                    "provider": "openai",
+                    "base_url": app_settings.openai_base_url,
+                    "model": app_settings.openai_model,
+                    "timeout": app_settings.openai_timeout,
+                }
             else:
+                # "none" — fall back to auto-detecting a local Ollama
                 llm_config = detect_ollama()
 
             if llm_config:
