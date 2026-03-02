@@ -33,9 +33,9 @@ Fixed format, sections with no content are omitted and remaining sections shift 
 ├───────────────────────────────┴─────────────────────────────┤
 │  RESULTS  (text, ≤400 chars)                                │
 ├─────────────────────────────────────────────────────────────┤
-│  ❝ Quote — Author, Company ❞   (indigo-50 callout box)     │
+│  ❝ Quote — Author, Company ❞   (indigo-50 callout box)      │
 ├─────────────────────────────────────────────────────────────┤
-│  Tags: …  │  Products: …  │  URL                           │  ← gray footer
+│  Tags: …  │  Products: …  │  URL                            │  
 └─────────────────────────────────────────────────────────────┘
 ```
 
