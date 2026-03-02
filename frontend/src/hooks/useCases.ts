@@ -39,3 +39,14 @@ export function useUpdateCase() {
     },
   });
 }
+
+export function useDeleteCase() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.cases.delete(id),
+    onSuccess: (_data, id) => {
+      queryClient.invalidateQueries({ queryKey: ["cases"] });
+      queryClient.removeQueries({ queryKey: ["cases", id] });
+    },
+  });
+}

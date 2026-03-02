@@ -86,6 +86,21 @@ Only fields present in the request body are updated. Omitted fields are left unc
 
 ---
 
+## DELETE /api/cases/{id}
+
+Permanently delete a reference case.
+
+**Path param:** `id` — 12-char hex string
+
+**Response `204`** — No content.
+
+**Error `404`** — Case not found.
+```json
+{ "detail": "Case not found" }
+```
+
+---
+
 ## ReferenceCase Fields
 
 See [data-models/reference-case.md](../data-models/reference-case.md) for the full field reference.

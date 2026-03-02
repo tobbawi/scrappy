@@ -101,3 +101,12 @@ def update_case(case_id: str, data: CaseUpdate, session: Session = Depends(get_s
     session.commit()
     session.refresh(case)
     return case
+
+
+@router.delete("/{case_id}", status_code=204)
+def delete_case(case_id: str, session: Session = Depends(get_session)):
+    case = session.get(ReferenceCase, case_id)
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+    session.delete(case)
+    session.commit()

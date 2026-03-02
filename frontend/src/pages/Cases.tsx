@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
-import { useCases } from "@/hooks/useCases";
+import { useCases, useDeleteCase } from "@/hooks/useCases";
 import { useCompanies } from "@/hooks/useCompanies";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDate, truncate, parseTags, isNewThisWeek, computeQualityScore } from "@/lib/utils";
-import { Search, ExternalLink, Download, Loader2 } from "lucide-react";
+import { Search, ExternalLink, Download, Loader2, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -156,6 +156,8 @@ export function Cases() {
       setIsPptxLoading(false);
     }
   };
+
+  const { mutate: deleteCase } = useDeleteCase();
 
   const hasFilters = !!(company || industry || country || newOnly || q);
 
@@ -341,15 +343,30 @@ export function Cases() {
                         </span>
                       ))}
                     </div>
-                    <a
-                      href={c.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline shrink-0"
-                    >
-                      Source <ExternalLink className="h-3 w-3" />
-                    </a>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover:opacity-100"
+                        title="Delete case"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (confirm("Permanently delete this case?")) {
+                            deleteCase(c.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                      <a
+                        href={c.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                      >
+                        Source <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>

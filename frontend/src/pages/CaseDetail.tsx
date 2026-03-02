@@ -1,5 +1,5 @@
-import { useParams, Link } from "react-router-dom";
-import { useCase, useUpdateCase } from "@/hooks/useCases";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useCase, useUpdateCase, useDeleteCase } from "@/hooks/useCases";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { formatDate, parseTags, computeQualityScore } from "@/lib/utils";
 import type { ReferenceCase } from "@/lib/api";
-import { ArrowLeft, ExternalLink, ChevronDown, ChevronUp, Pencil } from "lucide-react";
+import { ArrowLeft, ExternalLink, ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
 
 interface ContentSectionProps {
@@ -208,6 +208,8 @@ export function CaseDetail() {
   const { id } = useParams<{ id: string }>();
   const { data: c, isLoading } = useCase(id ?? "");
   const [showRaw, setShowRaw] = useState(false);
+  const navigate = useNavigate();
+  const { mutate: deleteCase } = useDeleteCase();
 
   if (isLoading) return <div className="p-6 text-muted-foreground">Loading…</div>;
   if (!c) return <div className="p-6 text-muted-foreground">Case not found.</div>;
@@ -259,6 +261,19 @@ export function CaseDetail() {
                 </span>
                 <div className="ml-auto flex items-center gap-2 shrink-0">
                   <EditDialog c={c} />
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    title="Delete case"
+                    onClick={() => {
+                      if (confirm("Permanently delete this case?")) {
+                        deleteCase(c.id, { onSuccess: () => navigate("/cases") });
+                      }
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                   <a
                     href={c.url}
                     target="_blank"

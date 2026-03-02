@@ -148,6 +148,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const text = await res.text().catch(() => res.statusText);
     throw new Error(`${res.status} ${text}`);
   }
+  if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
 }
 
@@ -175,6 +176,8 @@ export const api = {
     get: (id: string) => request<ReferenceCase>(`/cases/${id}`),
     update: (id: string, data: CaseUpdate) =>
       request<ReferenceCase>(`/cases/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request<void>(`/cases/${id}`, { method: "DELETE" }),
   },
 
   scrape: {

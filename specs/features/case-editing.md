@@ -59,6 +59,42 @@ Non-editable fields: `id`, `company_id`, `url`, `first_seen`, `content_hash`, `r
 - `frontend/src/hooks/useCases.ts` — `useUpdateCase()` mutation
 - `frontend/src/pages/CaseDetail.tsx` — `EditDialog` component + Edit button
 
+---
+
+## Delete a case
+
+### User Story
+
+As a user managing reference cases,
+I want to permanently delete a case,
+so that I can remove entries that are outdated, scraped by mistake, or otherwise unwanted.
+
+### Acceptance Criteria
+
+**Given** I am on the Cases list page
+**When** I hover over a case card
+**Then** a trash icon fades in at the bottom-right of the card
+
+**Given** I click the trash icon on a case card
+**When** I confirm the deletion prompt
+**Then** the case is removed and the list refreshes without the deleted card
+
+**Given** I am on a Case Detail page
+**When** the page loads
+**Then** a trash icon button is visible in the header toolbar
+
+**Given** I click the trash icon on the Case Detail page
+**When** I confirm the deletion prompt
+**Then** the case is deleted and I am navigated back to `/cases`
+
+**Given** I click the trash icon (on either page)
+**When** I dismiss the confirmation dialog
+**Then** no deletion occurs and the case remains unchanged
+
+**Given** the case ID does not exist
+**When** `DELETE /api/cases/{id}` is called
+**Then** a `404` response is returned
+
 ## API Reference
 
-See [../api/cases.md](../api/cases.md) for the `PATCH /api/cases/{id}` endpoint spec.
+See [../api/cases.md](../api/cases.md) for the `PATCH /api/cases/{id}` and `DELETE /api/cases/{id}` endpoint specs.
