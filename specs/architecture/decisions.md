@@ -294,3 +294,37 @@ without mutating module-level constants.
   constructs the response explicitly via `_settings_to_read()`.
 - Pipeline accepts a `scraper_config` dict; disabled fields are nulled out *after*
   all extractors run, giving extractors no special-casing.
+
+---
+
+## ADR-016 — Scraping Quality Overhaul (Round 2)
+
+**Date:** 2026-03-02
+
+**Context:** Deep analysis of the 132-case DB after round 1 revealed five systemic problems:
+listing page pollution (10%), vendor-as-customer (20%), residual tag noise (~30 new junk strings),
+boilerplate sections captured as content, and unstripped quote author prefixes.
+
+**Decision:**
+- `listing.py` gains `_filter_discovered_urls()` which removes pagination URLs (`/p\d+`),
+  same-depth / shallower URLs (subcategory / alt-language listings), and `-old`/`-new`
+  duplicate variants after URL discovery.
+- `HeuristicExtractor` takes `company_name` (threaded via `ExtractionPipeline` ← router) and
+  clears `customer_name` when it matches the vendor, preventing vendor-as-customer extraction.
+- `_TAG_NOISE` expanded with ~30 strings: video player controls, navigation items, filter UI
+  labels, and CTA text found in the DB.
+- `_BOILERPLATE_SIGNALS` list + `_valid_section_content()` rejects known footer CTA phrases
+  and sections shorter than 20 characters from challenge/solution/results.
+- `_looks_like_author()` refactored from `bool` → `str | None`; strips leading `- `/`– `/`— `/`• `
+  prefixes before returning the cleaned author name.
+- `scrape_case()` in `case.py` simplified to reuse `build_case_from_data()` and accepts
+  `llm_config`, `scraper_config`, `company_name` kwargs.
+
+**Consequences:**
+- Listing pollution eliminated: junk URLs no longer enter the scrape pipeline.
+- ~27 vendor-as-customer cases will have `customer_name = NULL` on next re-scrape, allowing
+  LLM to fill the correct value.
+- Tag quality further improved; video/nav/filter noise removed.
+- Boilerplate footer text no longer stored as challenge/solution/results.
+- Quote authors no longer carry leading dash prefixes.
+- No schema or API changes required; purely scraper-internal.

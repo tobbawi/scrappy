@@ -86,14 +86,30 @@ Four strategies are tried in order:
 4. **Quotation-mark-wrapped text** — `<em>`/`<strong>`/`<p>` whose entire text is wrapped in curly or straight quote characters.
 
 After each strategy finds a quote, the next sibling element is inspected as a potential `quote_author`
-using `_looks_like_author()` (starts with uppercase, 2–120 chars, looks like a name/title string).
+using `_looks_like_author()` which returns a cleaned author string or `None`. It strips leading
+dash/bullet prefixes (`- `, `– `, `— `, `• `) and validates the result (starts with uppercase,
+2–120 chars, looks like a name/title string).
+
+#### Vendor-name guard
+
+`HeuristicExtractor` accepts an optional `company_name` parameter (threaded from
+`ExtractionPipeline` ← `run_scrape_job`). After customer name extraction, if the result
+matches the company name (case-insensitive), it is cleared to `None` so downstream
+extractors (e.g. LLM) can fill the correct customer name instead.
+
+#### Section content validation
+
+Extracted section content (challenge, solution, results) is validated before storing:
+- **Minimum length**: content under 20 characters is rejected (catches garbage like "Over ons")
+- **Boilerplate detection**: content containing known footer CTA phrases (e.g. "technology agnostic company", "map your processes") is rejected via `_BOILERPLATE_SIGNALS`
 
 #### Tag noise filter
 
 Tags extracted via CSS classes (`tag|label|badge|category|pill|topic|keyword`) are filtered
-through a `_TAG_NOISE` blocklist of common CTA/nav strings (e.g. "Contact", "Read more",
-"Let's talk!", "Contacteer ons") and capped at 6 words. Only tags that survive both filters
-are stored.
+through a `_TAG_NOISE` blocklist of common CTA/nav/UI strings (e.g. "Contact", "Read more",
+"Let's talk!", "Contacteer ons", video player controls like "play"/"pause"/"mute",
+filter UI like "filter on sector", nav items like "over ons"/"jobs") and capped at 6 words.
+Only tags that survive both filters are stored.
 
 #### Date normalisation
 
@@ -137,7 +153,12 @@ Batch fetching reuses a single Playwright browser for all pages in one job.
    - Same domain as `listing_url`, or relative
    - Match `case_path_prefix` (if set), **or** contain a signal keyword:
      `case`, `customer`, `success`, `story`, `reference`, `client`
-4. Deduplicate and return sorted list
+4. Deduplicate
+5. Post-discovery filter (`_filter_discovered_urls`):
+   - **Pagination**: drop URLs whose path ends with `/p\d+` (e.g. `/cases/p2`)
+   - **Same-depth / shallower**: drop URLs with ≤ listing page path depth (catches subcategory pages and alt-language listing pages)
+   - **`-old` / `-new` duplicates**: if both `/foo-old` and `/foo` exist, drop the `-old` variant (same for `-new`)
+6. Return filtered list
 
 ---
 

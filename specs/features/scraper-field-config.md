@@ -37,9 +37,10 @@ Heuristic keyword customisation is available for: `challenge`, `solution`, `resu
 - `backend/main.py` — migration for new columns
 - `backend/schemas.py` — `SettingsRead` / `SettingsUpdate` extended
 - `backend/routers/settings.py` — JSON serialization/deserialization of new fields
-- `backend/scrapers/extractors/heuristic.py` — `HeuristicExtractor(custom_labels=…)` constructor
-- `backend/scrapers/extractors/pipeline.py` — `ExtractionPipeline(scraper_config=…)` + field nulling
-- `backend/routers/scraping.py` — passes `scraper_config` to `ExtractionPipeline`
+- `backend/scrapers/extractors/heuristic.py` — `HeuristicExtractor(custom_labels=…, company_name=…)` constructor
+- `backend/scrapers/extractors/pipeline.py` — `ExtractionPipeline(scraper_config=…, company_name=…)` + field nulling
+- `backend/routers/scraping.py` — passes `scraper_config` and `company_name` to `ExtractionPipeline`
+- `backend/scrapers/case.py` — `scrape_case()` forwards `llm_config`, `scraper_config`, `company_name` to pipeline
 
 ### Frontend
 - `frontend/src/lib/api.ts` — extended `AppSettings` interface
