@@ -66,6 +66,25 @@ Each company represents one website with a listing page of case studies.
 
 ---
 
+### US-6: Edit a company
+
+**As a user**, I want to update a company's name, listing URL, fetcher type, or case path prefix,
+**so that** I can correct mistakes or adapt to changes in the target website without deleting and recreating the company.
+
+**Acceptance criteria:**
+- Given a company row in the Companies table
+- When I click the pencil icon button
+- Then an Edit Company dialog opens pre-populated with the company's current values
+- When I change one or more fields and click "Save Changes"
+- Then the company row reflects the updated values without a page reload
+- And the dialog closes
+- Given I open the dialog and then cancel
+- Then no changes are saved and the dialog closes
+- Given the backend returns an error (e.g. duplicate name)
+- Then a red error message is shown inside the dialog
+
+---
+
 ### US-5: Delete a company
 
 **As a user**, I want to permanently remove a company and all its cases.
@@ -83,6 +102,7 @@ Each company represents one website with a listing page of case studies.
 
 - **Companies page** (`/companies`): Table with columns: Company (name + colored status dot), Listing URL, Fetcher, Status, Last scraped, Actions.
 - **AddCompanyDialog**: Modal form (name, URL, fetcher type, path prefix).
+- **EditCompanyDialog**: Modal form pre-populated with current company values; triggered by a pencil icon button in each row's actions cell.
 - **Status dot**: `idle` = zinc • `running` = amber (pulsing) • `success` = emerald • `error` = red.
 - **Status badge**: same colour coding as dot, shown alongside it.
 - **Error indicator**: red `!` circle on the row; full error text shown on hover (title tooltip).

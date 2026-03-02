@@ -1,6 +1,7 @@
 import { useCompanies, useDeleteCompany, useUpdateCompany } from "@/hooks/useCompanies";
 import { useTriggerScrape } from "@/hooks/useScrape";
 import { AddCompanyDialog } from "@/components/companies/AddCompanyDialog";
+import { EditCompanyDialog } from "@/components/companies/EditCompanyDialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { timeAgo } from "@/lib/utils";
@@ -100,6 +101,7 @@ function CompanyRow({ company }: { company: Company }) {
               <ToggleLeft className="h-4 w-4 text-muted-foreground" />
             )}
           </Button>
+          <EditCompanyDialog company={company} />
           <Button
             size="sm"
             variant="ghost"
