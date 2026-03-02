@@ -244,6 +244,35 @@ maximum `per_page=200`. This mirrors the existing `PaginatedCases` pattern.
 
 ---
 
+## ADR-015 — Multilingual (Dutch/French) Heuristic Extraction
+
+**Date:** 2026-03-02
+
+**Context:** Analysis of 132 cases across 10 Belgian companies showed near-zero fill rates
+for `publish_date` (4%), `quote_author` (1%), and significant garbage in `tags` (100% noise).
+The root cause: all section labels, date patterns, and testimonial keywords were English-only,
+while the target corpus is predominantly Dutch and French.
+
+**Decision:**
+- `SECTION_LABELS` extended with Dutch + French equivalents for challenge / solution / results.
+- `_DUTCH_MONTHS` map normalises Dutch/French month names to English before `dateutil.parse`;
+  the date regex is extended to match `"15 januari 2024"` / `"mars 2023"` patterns.
+- `_TAG_NOISE` frozenset filters CTA/nav labels (Dutch + English); tags also capped at 6 words.
+- `_TESTIMONIAL_LABELS` frozenset detects testimonial headings in Dutch/French/English,
+  enabling quote extraction from structured testimonial sections.
+- `_looks_like_author()` helper checks the next DOM sibling after any found quote for a person
+  attribution line; applied across all four quote-find strategies.
+- Section content limit raised from 800 → 1 500 chars to capture longer Dutch/French paragraphs.
+- `LLMExtractor` gains `quote` and `quote_author` as output fields with explicit prompt rules.
+
+**Consequences:**
+- Expected `publish_date` fill rate: 4% → significantly higher on Dutch/French pages.
+- Expected `quote_author` fill rate: 1% → 30%+ where quotes exist.
+- Tags no longer contain nav/CTA noise; may reduce tag count on some pages.
+- No schema or API changes required; purely extractor-internal.
+
+---
+
 ## ADR-014 — Scraper Field Config Stored as JSON Strings in AppSettings
 
 **Date:** 2026-03-01

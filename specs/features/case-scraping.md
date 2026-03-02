@@ -66,19 +66,40 @@ Extractors run in order. Each extractor only fills fields that are still `None` 
 
 The heuristic extractor looks for **section label elements** — any `<h2>`–`<h4>` or `<p>`/`<span>`/`<div>`
 whose entire text matches a known label (e.g. "The challenge", "Solution", "Results") — and
-collects the sibling content that follows. This handles sites like Webflow-built pages where
-semantic headings are styled `<p>` elements.
+collects the sibling content that follows (up to 1 500 chars). This handles sites like
+Webflow-built pages where semantic headings are styled `<p>` elements.
 
-Recognised label groups:
-- **challenge**: "the challenge", "challenge", "the problem", "pain point", "context", …
-- **solution**: "the solution", "solution", "our approach", "how it works", "what we built", …
-- **results**: "results", "outcomes", "impact", "the numbers", "key results", …
+Recognised label groups (English + Dutch + French):
+- **challenge**: "the challenge", "challenge", "the problem", … / "de uitdaging", "uitdaging", "het probleem", "aanleiding", … / "le défi", "défi", "le problème", …
+- **solution**: "the solution", "solution", "our approach", … / "de oplossing", "oplossing", "onze aanpak", … / "la solution", "notre solution", …
+- **results**: "results", "outcomes", "impact", … / "resultaten", "de resultaten", "de cijfers", … / "résultats", "les résultats"
 
 Customer name is also extracted from `og:description` / `og:title` patterns such as
 "for [Company]", "[Company]:", "helping [Company]".
 
-Inline quotes (text in `<em>`/`<strong>` wrapped in curly or straight quotation marks) are
-detected as the `quote` field.
+#### Quote and quote_author detection
+
+Four strategies are tried in order:
+1. **Testimonial headings** — if a heading matches a known testimonial label (e.g. "getuigenis", "témoignage", "what our clients say") the first substantial sibling paragraph is the quote.
+2. **`<blockquote>` tags** — text in the blockquote; `<cite>` child or next sibling checked for author.
+3. **Semantic CSS classes** — elements with class matching `quote|testimonial|blockquote|pull-quote|callout-quote`.
+4. **Quotation-mark-wrapped text** — `<em>`/`<strong>`/`<p>` whose entire text is wrapped in curly or straight quote characters.
+
+After each strategy finds a quote, the next sibling element is inspected as a potential `quote_author`
+using `_looks_like_author()` (starts with uppercase, 2–120 chars, looks like a name/title string).
+
+#### Tag noise filter
+
+Tags extracted via CSS classes (`tag|label|badge|category|pill|topic|keyword`) are filtered
+through a `_TAG_NOISE` blocklist of common CTA/nav strings (e.g. "Contact", "Read more",
+"Let's talk!", "Contacteer ons") and capped at 6 words. Only tags that survive both filters
+are stored.
+
+#### Date normalisation
+
+Dutch and French month names (`januari`, `février`, `mars`, …) are normalised to English before
+passing to `dateutil.parse`, so dates on Belgian/French pages are correctly parsed. The date
+regex also matches `"15 januari 2024"` and `"mars 2023"` patterns in addition to English formats.
 
 ### Ollama auto-detection
 

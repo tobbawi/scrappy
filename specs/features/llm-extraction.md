@@ -63,7 +63,7 @@ before running a scrape.
 - LLMExtractor is the 4th (last) step in the pipeline.
 - It only fills fields that are still `None` after prior extractors.
 - Input: first 8,000 characters of `raw_text`.
-- Output fields: `customer_name`, `customer_industry`, `customer_country`, `challenge`, `solution`, `results`, `products_used`.
+- Output fields: `customer_name`, `customer_industry`, `customer_country`, `challenge`, `solution`, `results`, `products_used`, `quote`, `quote_author`.
 - Request format: JSON (`format: "json"`) via Ollama `/api/chat`.
 - Handles both clean JSON and markdown-fenced JSON responses.
 - Timeout controlled by `AppSettings.ollama_timeout`.
