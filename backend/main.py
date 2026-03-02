@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from database import create_db_and_tables
 from routers import companies, cases, scraping, digest
 from routers import settings as settings_router
+from routers import export as export_router
 
 
 @asynccontextmanager
@@ -63,6 +64,7 @@ app.include_router(cases.router)
 app.include_router(scraping.router)
 app.include_router(digest.router)
 app.include_router(settings_router.router)
+app.include_router(export_router.router)
 
 
 @app.get("/api/health")

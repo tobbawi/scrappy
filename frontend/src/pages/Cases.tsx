@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDate, truncate, parseTags, isNewThisWeek, computeQualityScore } from "@/lib/utils";
-import { Search, ExternalLink } from "lucide-react";
+import { Search, ExternalLink, Download, Loader2 } from "lucide-react";
+import { api } from "@/lib/api";
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debounced, setDebounced] = useState(value);
@@ -125,6 +126,37 @@ export function Cases() {
     });
   };
 
+  const [isPptxLoading, setIsPptxLoading] = useState(false);
+
+  const downloadPptx = async () => {
+    setIsPptxLoading(true);
+    try {
+      const res = await api.export.pptx({
+        company: company || undefined,
+        industry: industry || undefined,
+        country: country || undefined,
+        q: debouncedQ || undefined,
+        sort,
+        new_only: newOnly ? "true" : undefined,
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const buf = await res.arrayBuffer();
+      const blob = new Blob([buf], {
+        type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = company ? `scrappy-${company}-cases.pptx` : "scrappy-cases.pptx";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert("Export failed: " + e);
+    } finally {
+      setIsPptxLoading(false);
+    }
+  };
+
   const hasFilters = !!(company || industry || country || newOnly || q);
 
   // Collect unique industries and countries from loaded data for filter options
@@ -229,6 +261,19 @@ export function Cases() {
           <span className="ml-auto text-sm text-muted-foreground whitespace-nowrap">
             {data?.total ?? 0} results
           </span>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={downloadPptx}
+            disabled={isPptxLoading}
+            className="gap-1.5 shrink-0"
+          >
+            {isPptxLoading
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <Download className="h-4 w-4" />}
+            PowerPoint
+          </Button>
         </div>
       </div>
 

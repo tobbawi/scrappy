@@ -195,6 +195,16 @@ export const api = {
     get: () => request<Stats>("/stats"),
   },
 
+  export: {
+    pptx: (params: Record<string, string | undefined>) => {
+      const qs = new URLSearchParams();
+      for (const [k, v] of Object.entries(params)) {
+        if (v) qs.set(k, v);
+      }
+      return fetch(`${BASE}/export/pptx?${qs}`);
+    },
+  },
+
   settings: {
     get: () => request<AppSettings>("/settings"),
     update: (data: Partial<AppSettings>) =>

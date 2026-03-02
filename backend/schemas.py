@@ -1,4 +1,3 @@
-import ipaddress
 from datetime import datetime, date
 from typing import Optional, List
 from urllib.parse import urlparse
@@ -134,16 +133,8 @@ class SettingsUpdate(BaseModel):
         parsed = urlparse(v)
         if parsed.scheme not in ("http", "https"):
             raise ValueError("Only http/https URLs are allowed")
-        hostname = parsed.hostname
-        if not hostname:
+        if not parsed.hostname:
             raise ValueError("URL must include a hostname")
-        try:
-            addr = ipaddress.ip_address(hostname)
-            is_private = addr.is_loopback or addr.is_private or addr.is_link_local or addr.is_reserved
-        except ValueError:
-            is_private = hostname == "localhost" or hostname.endswith(".local")
-        if is_private:
-            raise ValueError("Private or reserved addresses are not allowed")
         return v
 
 
