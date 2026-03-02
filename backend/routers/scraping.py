@@ -175,7 +175,7 @@ def run_scrape_job(job_id: str, company_id: Optional[str]):
                     })
 
                     total_found += len(urls)
-                    pipeline = ExtractionPipeline(llm_config=llm_config, scraper_config=scraper_config)
+                    pipeline = ExtractionPipeline(llm_config=llm_config, scraper_config=scraper_config, company_name=company.name)
                     cases_new_company = 0
 
                     for idx, (url, html) in enumerate(html_map.items()):

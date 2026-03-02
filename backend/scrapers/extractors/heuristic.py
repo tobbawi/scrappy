@@ -67,6 +67,20 @@ _TAG_NOISE = frozenset({
     "let's talk!", "laten we praten", "laten we aan tafel gaan zitten!",
     "get in touch", "reach out", "talk to us", "click here",
     "all", "all categories", "latest", "new", "featured",
+    # Video player controls
+    "play", "pause", "mute", "unmute", "enter fullscreen", "exit fullscreen",
+    "enable captions", "disable captions", "bekijk video",
+    # Navigation items
+    "over ons", "wat we doen", "jobs", "routebeschrijving",
+    "terug naar overzicht", "contact opnemen",
+    # CTA / promo
+    "gratis demo", "meer weten", "privacy policy", "algemene voorwaarden",
+    "start vandaag!", "start mijn transformatie!", "aan de slag met mijn data!",
+    # Filter UI
+    "filter on offer", "filter on sector", "filter op aanbod", "filter op sector",
+    # Misc noise
+    "made by", "implementatie copy", "community", "kickstarters", "essential",
+    "managed services",
 })
 
 _DUTCH_MONTHS = {
@@ -80,6 +94,14 @@ _DUTCH_MONTHS = {
     "octobre": "October", "novembre": "November", "décembre": "December",
 }
 
+_BOILERPLATE_SIGNALS = [
+    "technology agnostic company",
+    "we always explore multiple",
+    "map your processes",
+    "wat we al gedaan hebben",
+    "slim informatiebeheer. zonder complexiteit",
+]
+
 _TESTIMONIAL_LABELS = frozenset({
     "testimonial", "testimonials", "what our clients say", "what they say",
     "client story", "customer story", "wat klanten zeggen", "getuigenis",
@@ -90,7 +112,8 @@ _TESTIMONIAL_LABELS = frozenset({
 class HeuristicExtractor(BaseExtractor):
     """Fallback extractor using HTML structure heuristics."""
 
-    def __init__(self, custom_labels: dict[str, list[str]] | None = None):
+    def __init__(self, custom_labels: dict[str, list[str]] | None = None, company_name: str | None = None):
+        self._company_name = company_name
         # Copy module-level SECTION_LABELS so we can extend without mutation
         self._section_labels: dict[str, list[str]] = {
             k: list(v) for k, v in SECTION_LABELS.items()
@@ -154,7 +177,11 @@ class HeuristicExtractor(BaseExtractor):
             alt = logo_img.get("alt", "").strip()
             if alt and len(alt) < 60:
                 self._set_if_missing(data, "customer_name", alt)
-                return
+
+        # Guard: if extracted name matches the vendor (site owner), clear it
+        if self._company_name and data.get("customer_name"):
+            if data["customer_name"].strip().lower() == self._company_name.strip().lower():
+                data["customer_name"] = None
 
     def _customer_from_text(self, text: str) -> str | None:
         """Try to extract a customer name from a title or description string."""
@@ -223,7 +250,7 @@ class HeuristicExtractor(BaseExtractor):
             for heading in soup.find_all(tag):
                 if heading.get_text(strip=True).lower() in labels_lower:
                     content = self._section_content_after(heading, labels_lower)
-                    if content:
+                    if content and self._valid_section_content(content):
                         self._set_if_missing(data, key, content)
                         return
 
@@ -232,9 +259,17 @@ class HeuristicExtractor(BaseExtractor):
             el_text = el.get_text(strip=True).lower()
             if el_text in labels_lower:
                 content = self._section_content_after(el, labels_lower)
-                if content:
+                if content and self._valid_section_content(content):
                     self._set_if_missing(data, key, content)
                     return
+
+    @staticmethod
+    def _valid_section_content(content: str) -> bool:
+        """Return False for too-short content or known boilerplate."""
+        if len(content) < 20:
+            return False
+        content_lower = content.lower()
+        return not any(signal in content_lower for signal in _BOILERPLATE_SIGNALS)
 
     def _section_content_after(self, anchor_el, stop_labels: set[str]) -> str:
         """Collect sibling text after anchor_el, stopping at the next section label or heading."""
@@ -255,15 +290,20 @@ class HeuristicExtractor(BaseExtractor):
 
     # ── Quote ──────────────────────────────────────────────────────────────
 
-    def _looks_like_author(self, text: str) -> bool:
+    def _looks_like_author(self, text: str) -> str | None:
+        """Return cleaned author string if text looks like an author attribution, else None."""
         text = text.strip()
+        # Strip leading dash/bullet prefixes
+        text = re.sub(r"^[-–—•]\s*", "", text).strip()
         if not text or len(text) > 120 or len(text) < 3:
-            return False
+            return None
         if "http" in text.lower() or text.count(",") > 4 or text.count(".") > 3:
-            return False
+            return None
         if not text[0].isupper() or "?" in text:
-            return False
-        return len(text.split()) >= 2 or "," in text
+            return None
+        if len(text.split()) >= 2 or "," in text:
+            return text
+        return None
 
     def _extract_quote(self, soup: BeautifulSoup, data: dict):
         if data.get("quote"):
@@ -279,9 +319,9 @@ class HeuristicExtractor(BaseExtractor):
                         if not data.get("quote_author"):
                             next_sib = sib.find_next_sibling()
                             if next_sib:
-                                author_text = next_sib.get_text(" ", strip=True)
-                                if self._looks_like_author(author_text):
-                                    self._set_if_missing(data, "quote_author", author_text)
+                                author = self._looks_like_author(next_sib.get_text(" ", strip=True))
+                                if author:
+                                    self._set_if_missing(data, "quote_author", author)
                         return
 
         # 1. blockquote tags
@@ -297,9 +337,9 @@ class HeuristicExtractor(BaseExtractor):
                 if not data.get("quote_author"):
                     next_sib = bq.find_next_sibling()
                     if next_sib:
-                        sib_text = next_sib.get_text(" ", strip=True)
-                        if self._looks_like_author(sib_text):
-                            self._set_if_missing(data, "quote_author", sib_text)
+                        author = self._looks_like_author(next_sib.get_text(" ", strip=True))
+                        if author:
+                            self._set_if_missing(data, "quote_author", author)
                 return
 
         # 2. Semantic class names
@@ -328,9 +368,9 @@ class HeuristicExtractor(BaseExtractor):
                 if not data.get("quote_author"):
                     next_sib = el.find_next_sibling()
                     if next_sib:
-                        sib_text = next_sib.get_text(" ", strip=True)
-                        if self._looks_like_author(sib_text):
-                            self._set_if_missing(data, "quote_author", sib_text)
+                        author = self._looks_like_author(next_sib.get_text(" ", strip=True))
+                        if author:
+                            self._set_if_missing(data, "quote_author", author)
                 return
 
     # ── Industry ───────────────────────────────────────────────────────────

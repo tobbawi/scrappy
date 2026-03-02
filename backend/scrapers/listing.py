@@ -1,4 +1,5 @@
 import ipaddress
+import re
 from typing import Optional
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
@@ -105,4 +106,39 @@ def get_case_urls(
         seen.add(full_url)
         urls.append(full_url)
 
-    return urls
+    return _filter_discovered_urls(urls, listing_url)
+
+
+def _path_segments(url: str) -> list[str]:
+    """Return non-empty path segments of a URL."""
+    return [s for s in urlparse(url).path.strip("/").split("/") if s]
+
+
+def _filter_discovered_urls(urls: list[str], listing_url: str) -> list[str]:
+    """Post-discovery filters to remove junk URLs."""
+    listing_depth = len(_path_segments(listing_url))
+    filtered = []
+    url_set = {u.rstrip("/") for u in urls}
+
+    for url in urls:
+        path = urlparse(url).path
+
+        # a) Pagination — path ends with /p2, /p3, etc.
+        if re.search(r"/p\d+/?$", path):
+            continue
+
+        # b) Same depth as listing page = likely subcategory or alt-language listing
+        segments = _path_segments(url)
+        if len(segments) <= listing_depth:
+            continue
+
+        # c) Drop -old variant when base exists (also -new when base exists)
+        stripped = url.rstrip("/")
+        if stripped.endswith("-old") and stripped[:-4] in url_set:
+            continue
+        if stripped.endswith("-new") and stripped[:-4] in url_set:
+            continue
+
+        filtered.append(url)
+
+    return filtered

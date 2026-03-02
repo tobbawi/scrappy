@@ -34,6 +34,7 @@ class ExtractionPipeline:
         self,
         llm_config: Optional[dict] = None,
         scraper_config: Optional[dict] = None,
+        company_name: Optional[str] = None,
     ):
         """
         llm_config: dict with keys enabled, base_url, model, timeout.
@@ -41,6 +42,7 @@ class ExtractionPipeline:
         scraper_config: dict with optional keys:
             disabled_fields (list[str]) — fields to null out after extraction
             heuristic_labels (dict[str, list[str]]) — extra section-header keywords
+        company_name: vendor name to guard against extracting as customer
         """
         cfg = scraper_config or {}
         self._disabled_fields: list[str] = cfg.get("disabled_fields", [])
@@ -49,7 +51,7 @@ class ExtractionPipeline:
         self.extractors = [
             MetaTagExtractor(),    # OG tags — most reliable
             SchemaOrgExtractor(),  # JSON-LD — structured
-            HeuristicExtractor(custom_labels=heuristic_labels),  # h1/blockquote/semantic — fallback
+            HeuristicExtractor(custom_labels=heuristic_labels, company_name=company_name),
         ]
         if llm_config and llm_config.get("enabled"):
             from .llm import LLMExtractor

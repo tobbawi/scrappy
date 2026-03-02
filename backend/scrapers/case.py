@@ -45,7 +45,14 @@ def build_case_from_data(data: dict, company_id: str, html: str) -> Optional[Ref
     )
 
 
-def scrape_case(url: str, company_id: str, fetcher_type: str = "static") -> Optional[ReferenceCase]:
+def scrape_case(
+    url: str,
+    company_id: str,
+    fetcher_type: str = "static",
+    llm_config: Optional[dict] = None,
+    scraper_config: Optional[dict] = None,
+    company_name: Optional[str] = None,
+) -> Optional[ReferenceCase]:
     """Fetch a case page, extract structured data, return a ReferenceCase model."""
     try:
         html = fetch(url, fetcher_type)
@@ -53,31 +60,10 @@ def scrape_case(url: str, company_id: str, fetcher_type: str = "static") -> Opti
         print(f"[scrape_case] fetch failed for {url}: {e}")
         return None
 
-    pipeline = ExtractionPipeline()
-    data = pipeline.run(html, url)
-
-    now = datetime.now(timezone.utc)
-
-    return ReferenceCase(
-        id=_make_id(url),
-        company_id=company_id,
-        url=url,
-        title=data.get("title"),
-        customer_name=data.get("customer_name"),
-        customer_industry=data.get("customer_industry"),
-        customer_country=data.get("customer_country"),
-        customer_logo_url=data.get("customer_logo_url"),
-        challenge=data.get("challenge"),
-        solution=data.get("solution"),
-        results=data.get("results"),
-        products_used=data.get("products_used"),
-        quote=data.get("quote"),
-        quote_author=data.get("quote_author"),
-        quote_author_company=data.get("quote_author_company"),
-        publish_date=data.get("publish_date"),
-        tags=data.get("tags"),
-        first_seen=now,
-        last_checked=now,
-        content_hash=_content_hash(html),
-        raw_text=data.get("raw_text"),
+    pipeline = ExtractionPipeline(
+        llm_config=llm_config,
+        scraper_config=scraper_config,
+        company_name=company_name,
     )
+    data = pipeline.run(html, url)
+    return build_case_from_data(data, company_id, html)
