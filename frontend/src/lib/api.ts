@@ -70,6 +70,13 @@ export interface PaginatedCompanies {
   pages: number;
 }
 
+export interface CompanyDetail extends Company {
+  case_count: number;
+  avg_quality_score: number;
+  top_industries: { name: string; count: number }[];
+  top_countries: { name: string; count: number }[];
+}
+
 export interface ScrapeJob {
   id: string;
   company_id: string | null;
@@ -157,6 +164,7 @@ export const api = {
   companies: {
     list: (page = 1, per_page = 100) =>
       request<PaginatedCompanies>(`/companies?page=${page}&per_page=${per_page}`),
+    get: (id: string) => request<CompanyDetail>(`/companies/${id}`),
     create: (data: { name: string; listing_url: string; fetcher_type?: string; case_path_prefix?: string | null; active?: boolean }) =>
       request<Company>("/companies", { method: "POST", body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Company>) =>
@@ -183,7 +191,10 @@ export const api = {
   scrape: {
     trigger: (company_id: string = "all") =>
       request<ScrapeJob>("/scrape", { method: "POST", body: JSON.stringify({ company_id }) }),
-    jobs: () => request<ScrapeJob[]>("/scrape/jobs"),
+    jobs: (companyId?: string) => {
+      const qs = companyId ? `?company_id=${companyId}` : "";
+      return request<ScrapeJob[]>(`/scrape/jobs${qs}`);
+    },
     job: (id: string) => request<ScrapeJob>(`/scrape/jobs/${id}`),
   },
 

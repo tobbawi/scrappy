@@ -1,10 +1,18 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api, Company, PaginatedCompanies } from "@/lib/api";
+import { api, Company, CompanyDetail, PaginatedCompanies } from "@/lib/api";
 
 export function useCompanies(page = 1, per_page = 100) {
   return useQuery<PaginatedCompanies>({
     queryKey: ["companies", page, per_page],
     queryFn: () => api.companies.list(page, per_page),
+  });
+}
+
+export function useCompany(id: string) {
+  return useQuery<CompanyDetail>({
+    queryKey: ["companies", id],
+    queryFn: () => api.companies.get(id),
+    enabled: !!id,
   });
 }
 
@@ -21,7 +29,9 @@ export function useUpdateCompany() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: Partial<Company> }) =>
       api.companies.update(id, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["companies"] }),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ["companies"] });
+    },
   });
 }
 

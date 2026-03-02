@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatDate, truncate, parseTags, isNewThisWeek, computeQualityScore } from "@/lib/utils";
 import { Search, ExternalLink, Download, Loader2, Trash2 } from "lucide-react";
+import { CompanyFavicon } from "@/components/CompanyFavicon";
 import { api } from "@/lib/api";
 
 function useDebounce<T>(value: T, delay: number): T {
@@ -19,14 +20,6 @@ function useDebounce<T>(value: T, delay: number): T {
   return debounced;
 }
 
-function CompanyAvatar({ companyId }: { companyId: string }) {
-  const initial = companyId.charAt(0).toUpperCase();
-  return (
-    <div className="h-8 w-8 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0 select-none">
-      {initial}
-    </div>
-  );
-}
 
 function PagePills({
   current,
@@ -298,7 +291,7 @@ export function Cases() {
               className="group block bg-card border rounded-lg px-4 py-3 hover:shadow-card hover:-translate-y-px transition-all duration-150"
             >
               <div className="flex items-start gap-3">
-                <CompanyAvatar companyId={c.company_id} />
+                <CompanyFavicon url={c.url} name={c.company_id} size={32} />
                 <div className="flex-1 min-w-0">
                   {/* Header row */}
                   <div className="flex items-center gap-2 flex-wrap">

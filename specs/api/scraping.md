@@ -36,7 +36,14 @@ immediately with the created job so the client can poll for status.
 
 ## GET /api/scrape/jobs
 
-List the most recent scrape jobs (last 50, descending by start time).
+List the most recent scrape jobs, descending by start time.
+
+**Query parameters**
+
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `company_id` | string | — | Filter jobs by company slug. Omit to list all jobs. |
+| `limit` | int | `50` | Max number of jobs to return (max `200`) |
 
 **Response `200`** — Array of ScrapeJob objects.
 

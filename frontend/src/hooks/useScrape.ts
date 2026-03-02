@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, JobEvent } from "@/lib/api";
 
-export function useScrapeJobs() {
+export function useScrapeJobs(companyId?: string) {
   return useQuery({
-    queryKey: ["scrape-jobs"],
-    queryFn: api.scrape.jobs,
+    queryKey: ["scrape-jobs", companyId],
+    queryFn: () => api.scrape.jobs(companyId),
     refetchInterval: (query) => {
       const jobs = query.state.data;
       if (!jobs) return 5000;

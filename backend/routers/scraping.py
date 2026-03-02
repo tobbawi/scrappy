@@ -292,10 +292,16 @@ def trigger_scrape(
 
 
 @router.get("/jobs", response_model=list[ScrapeJobRead])
-def list_jobs(session: Session = Depends(get_session)):
-    return session.exec(
-        select(ScrapeJob).order_by(ScrapeJob.started_at.desc()).limit(50)
-    ).all()
+def list_jobs(
+    company_id: Optional[str] = None,
+    limit: int = 50,
+    session: Session = Depends(get_session),
+):
+    limit = min(limit, 200)
+    stmt = select(ScrapeJob).order_by(ScrapeJob.started_at.desc())
+    if company_id:
+        stmt = stmt.where(ScrapeJob.company_id == company_id)
+    return session.exec(stmt.limit(limit)).all()
 
 
 @router.get("/jobs/{job_id}", response_model=ScrapeJobRead)

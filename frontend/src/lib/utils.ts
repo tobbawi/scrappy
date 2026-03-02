@@ -55,6 +55,15 @@ export function isNewThisWeek(dateStr: string | null | undefined): boolean {
   return diffMs < 7 * 24 * 60 * 60 * 1000;
 }
 
+export function faviconUrl(url: string, size = 64): string {
+  try {
+    const domain = new URL(url).hostname;
+    return `https://www.google.com/s2/favicons?domain=${domain}&sz=${size}`;
+  } catch {
+    return "";
+  }
+}
+
 export function computeQualityScore(c: ReferenceCase): number {
   let score = 0;
   if (c.customer_name) score += 20;

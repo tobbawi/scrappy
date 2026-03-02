@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useCompanies, useDeleteCompany, useUpdateCompany } from "@/hooks/useCompanies";
 import { useTriggerScrape } from "@/hooks/useScrape";
 import { AddCompanyDialog } from "@/components/companies/AddCompanyDialog";
@@ -7,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { timeAgo } from "@/lib/utils";
 import { RefreshCw, Trash2, ExternalLink, ToggleLeft, ToggleRight, Zap } from "lucide-react";
 import type { Company } from "@/lib/api";
+import { CompanyFavicon } from "@/components/CompanyFavicon";
 
 const statusDot: Record<string, string> = {
   idle: "bg-zinc-300",
@@ -31,13 +33,16 @@ function CompanyRow({ company }: { company: Company }) {
   return (
     <tr className="border-b hover:bg-muted/30 transition-colors">
       <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span
-            className={`h-2 w-2 rounded-full shrink-0 ${statusDot[company.scrape_status] ?? "bg-zinc-300"}`}
-            title={company.scrape_status}
-          />
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <CompanyFavicon url={company.listing_url} name={company.name} size={28} />
+            <span
+              className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-white ${statusDot[company.scrape_status] ?? "bg-zinc-300"}`}
+              title={company.scrape_status}
+            />
+          </div>
           <div>
-            <div className="font-medium">{company.name}</div>
+            <Link to={`/companies/${company.id}`} className="font-medium text-primary hover:underline">{company.name}</Link>
             <div className="text-xs text-muted-foreground">{company.id}</div>
           </div>
         </div>

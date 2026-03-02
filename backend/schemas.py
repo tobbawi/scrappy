@@ -36,6 +36,13 @@ class CompanyRead(BaseModel):
         from_attributes = True
 
 
+class CompanyDetailRead(CompanyRead):
+    case_count: int
+    avg_quality_score: float
+    top_industries: list[dict]
+    top_countries: list[dict]
+
+
 class CaseRead(BaseModel):
     id: str
     company_id: str

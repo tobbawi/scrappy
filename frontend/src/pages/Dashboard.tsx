@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDate, timeAgo, isNewThisWeek } from "@/lib/utils";
 import { Building2, FileText, RefreshCw, Clock, Zap } from "lucide-react";
+import { CompanyFavicon } from "@/components/CompanyFavicon";
 import { Link } from "react-router-dom";
 
 interface StatCardProps {
@@ -25,14 +26,6 @@ function StatCard({ label, value, sub, accent }: StatCardProps) {
   );
 }
 
-function CompanyAvatar({ companyId }: { companyId: string }) {
-  const initial = companyId.charAt(0).toUpperCase();
-  return (
-    <div className="h-7 w-7 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs font-bold shrink-0 select-none">
-      {initial}
-    </div>
-  );
-}
 
 const statusColors: Record<string, "success" | "warning" | "error" | "secondary"> = {
   done: "success",
@@ -167,7 +160,7 @@ export function Dashboard() {
                   to={`/cases/${c.id}`}
                   className="flex items-center gap-3 px-4 py-2.5 hover:bg-accent/50 transition-colors"
                 >
-                  <CompanyAvatar companyId={c.company_id} />
+                  <CompanyFavicon url={c.url} name={c.company_id} size={28} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{c.title || c.url}</p>
                     <p className="text-xs text-muted-foreground truncate">
