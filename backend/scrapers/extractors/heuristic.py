@@ -118,6 +118,13 @@ class HeuristicExtractor(BaseExtractor):
         self._section_labels: dict[str, list[str]] = {
             k: list(v) for k, v in SECTION_LABELS.items()
         }
+        # Add "{company_name} {label}" variants (e.g. "formica solution")
+        if company_name:
+            cn = company_name.strip().lower()
+            for field in list(self._section_labels):
+                for lbl in list(self._section_labels[field]):
+                    if " " not in lbl:  # single-word core labels
+                        self._section_labels[field].append(f"{cn} {lbl}")
         if custom_labels:
             for field, extra in custom_labels.items():
                 if field in self._section_labels:
@@ -171,7 +178,21 @@ class HeuristicExtractor(BaseExtractor):
                     self._set_if_missing(data, "customer_name", text)
                     return
 
-        # 3. <img alt> near "logo" class
+        # 3. Title pattern: "CustomerName - VendorName"
+        if self._company_name and not data.get("customer_name"):
+            title = data.get("title") or ""
+            for sep in [" - ", " | ", " — ", " – "]:
+                if sep in title:
+                    parts = title.split(sep)
+                    for part in parts:
+                        part = part.strip()
+                        if part and part.lower() != self._company_name.strip().lower():
+                            self._set_if_missing(data, "customer_name", part)
+                            break
+                    if data.get("customer_name"):
+                        break
+
+        # 4. <img alt> near "logo" class
         logo_img = soup.find("img", class_=re.compile("logo", re.I))
         if logo_img:
             alt = logo_img.get("alt", "").strip()

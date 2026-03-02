@@ -69,9 +69,29 @@ class ExtractionPipeline:
         "quote", "quote_author", "quote_author_company", "publish_date", "tags",
     })
 
+    @staticmethod
+    def _strip_cookie_banners(soup: BeautifulSoup):
+        """Remove cookie consent overlays so they don't pollute text or heuristics."""
+        import re
+        # By ID (Cookiebot, OneTrust, etc.)
+        for id_pattern in [
+            "CybotCookiebotDialog",
+            "CybotCookiebotDialogBodyUnderlay",
+            "onetrust-consent-sdk",
+            "cookie-law-info-bar",
+        ]:
+            el = soup.find(id=id_pattern)
+            if el:
+                el.decompose()
+        # By class pattern
+        cookie_re = re.compile(r"cookie[-_]?(consent|banner|notice|popup|dialog|overlay)", re.I)
+        for el in soup.find_all(class_=cookie_re):
+            el.decompose()
+
     def run(self, html: str, url: str, on_event=None) -> dict:
         import time
         soup = BeautifulSoup(html, "lxml")
+        self._strip_cookie_banners(soup)
         raw_text = soup.get_text(separator="\n", strip=True)
         data = {"url": url, "raw_text": raw_text[:50_000]}
 
