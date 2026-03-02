@@ -279,7 +279,7 @@ class HeuristicExtractor(BaseExtractor):
                         if not data.get("quote_author"):
                             next_sib = sib.find_next_sibling()
                             if next_sib:
-                                author_text = next_sib.get_text(strip=True)
+                                author_text = next_sib.get_text(" ", strip=True)
                                 if self._looks_like_author(author_text):
                                     self._set_if_missing(data, "quote_author", author_text)
                         return
@@ -293,11 +293,11 @@ class HeuristicExtractor(BaseExtractor):
                     class_=re.compile("author|attribution|name", re.I)
                 )
                 if cite:
-                    self._set_if_missing(data, "quote_author", cite.get_text(strip=True))
+                    self._set_if_missing(data, "quote_author", cite.get_text(" ", strip=True))
                 if not data.get("quote_author"):
                     next_sib = bq.find_next_sibling()
                     if next_sib:
-                        sib_text = next_sib.get_text(strip=True)
+                        sib_text = next_sib.get_text(" ", strip=True)
                         if self._looks_like_author(sib_text):
                             self._set_if_missing(data, "quote_author", sib_text)
                 return
@@ -312,7 +312,7 @@ class HeuristicExtractor(BaseExtractor):
                     if not data.get("quote_author"):
                         next_sib = el.find_next_sibling()
                         if next_sib:
-                            sib_text = next_sib.get_text(strip=True)
+                            sib_text = next_sib.get_text(" ", strip=True)
                             if self._looks_like_author(sib_text):
                                 self._set_if_missing(data, "quote_author", sib_text)
                     return
@@ -328,7 +328,7 @@ class HeuristicExtractor(BaseExtractor):
                 if not data.get("quote_author"):
                     next_sib = el.find_next_sibling()
                     if next_sib:
-                        sib_text = next_sib.get_text(strip=True)
+                        sib_text = next_sib.get_text(" ", strip=True)
                         if self._looks_like_author(sib_text):
                             self._set_if_missing(data, "quote_author", sib_text)
                 return
