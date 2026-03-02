@@ -30,18 +30,61 @@ SECTION_LABELS: dict[str, list[str]] = {
         "the challenge", "challenge", "the problem", "problem statement",
         "business challenge", "situation", "the situation", "pain point",
         "context", "background",
+        # Dutch
+        "de uitdaging", "uitdaging", "het probleem", "het vraagstuk",
+        "aanleiding", "de situatie", "achtergrond",
+        # French
+        "le défi", "défi", "le problème", "la situation",
     ],
     "solution": [
         "the solution", "solution", "our solution", "approach", "our approach",
         "how we solved it", "what we built", "our work", "the project",
         "how it works", "under the hood", "what we did",
+        # Dutch
+        "de oplossing", "oplossing", "onze oplossing", "onze aanpak",
+        "aanpak", "de aanpak", "wat we bouwden", "het project", "hoe het werkt",
+        # French
+        "la solution", "notre solution", "notre approche",
     ],
     "results": [
         "results", "the results", "outcomes", "the outcomes", "impact",
         "the impact", "benefits", "key results", "key outcomes", "achievements",
         "numbers", "the numbers", "what we achieved",
+        # Dutch
+        "resultaten", "de resultaten", "het resultaat", "de impact",
+        "impact", "voordelen", "de voordelen", "wat we bereikten", "de cijfers", "cijfers",
+        # French
+        "résultats", "les résultats",
     ],
 }
+
+_TAG_NOISE = frozenset({
+    "contact", "contact us", "contacteer ons", "neem contact op",
+    "newsletter", "subscribe", "read more", "learn more",
+    "meer lezen", "lees meer", "bekijk meer", "view more", "see more",
+    "download", "get started", "sign up", "log in", "login", "register",
+    "back to top", "home", "menu", "search", "close", "share",
+    "let's talk!", "laten we praten", "laten we aan tafel gaan zitten!",
+    "get in touch", "reach out", "talk to us", "click here",
+    "all", "all categories", "latest", "new", "featured",
+})
+
+_DUTCH_MONTHS = {
+    "januari": "January", "februari": "February", "maart": "March",
+    "april": "April", "mei": "May", "juni": "June",
+    "juli": "July", "augustus": "August", "september": "September",
+    "oktober": "October", "november": "November", "december": "December",
+    "janvier": "January", "février": "February", "mars": "March",
+    "avril": "April", "mai": "May", "juin": "June",
+    "juillet": "July", "août": "August", "septembre": "September",
+    "octobre": "October", "novembre": "November", "décembre": "December",
+}
+
+_TESTIMONIAL_LABELS = frozenset({
+    "testimonial", "testimonials", "what our clients say", "what they say",
+    "client story", "customer story", "wat klanten zeggen", "getuigenis",
+    "getuigenissen", "klantervaring", "témoignage",
+})
 
 
 class HeuristicExtractor(BaseExtractor):
@@ -205,16 +248,41 @@ class HeuristicExtractor(BaseExtractor):
             if sib.name in ("h1", "h2", "h3", "h4"):
                 break
             parts.append(sib_text)
-            if sum(len(p) for p in parts) > 800:
+            if sum(len(p) for p in parts) > 1500:
                 break
         combined = " ".join(parts).strip()
-        return combined[:800] if combined else ""
+        return combined[:1500] if combined else ""
 
     # ── Quote ──────────────────────────────────────────────────────────────
+
+    def _looks_like_author(self, text: str) -> bool:
+        text = text.strip()
+        if not text or len(text) > 120 or len(text) < 3:
+            return False
+        if "http" in text.lower() or text.count(",") > 4 or text.count(".") > 3:
+            return False
+        if not text[0].isupper() or "?" in text:
+            return False
+        return len(text.split()) >= 2 or "," in text
 
     def _extract_quote(self, soup: BeautifulSoup, data: dict):
         if data.get("quote"):
             return
+
+        # 0. Testimonial section label detection
+        for heading in soup.find_all(["h2", "h3", "h4", "p", "div", "span"]):
+            if heading.get_text(strip=True).lower() in _TESTIMONIAL_LABELS:
+                for sib in heading.find_next_siblings():
+                    sib_text = sib.get_text(strip=True)
+                    if len(sib_text) > 20:
+                        self._set_if_missing(data, "quote", sib_text[:500])
+                        if not data.get("quote_author"):
+                            next_sib = sib.find_next_sibling()
+                            if next_sib:
+                                author_text = next_sib.get_text(strip=True)
+                                if self._looks_like_author(author_text):
+                                    self._set_if_missing(data, "quote_author", author_text)
+                        return
 
         # 1. blockquote tags
         for bq in soup.find_all("blockquote"):
@@ -226,6 +294,12 @@ class HeuristicExtractor(BaseExtractor):
                 )
                 if cite:
                     self._set_if_missing(data, "quote_author", cite.get_text(strip=True))
+                if not data.get("quote_author"):
+                    next_sib = bq.find_next_sibling()
+                    if next_sib:
+                        sib_text = next_sib.get_text(strip=True)
+                        if self._looks_like_author(sib_text):
+                            self._set_if_missing(data, "quote_author", sib_text)
                 return
 
         # 2. Semantic class names
@@ -235,6 +309,12 @@ class HeuristicExtractor(BaseExtractor):
                 text = el.get_text(strip=True)
                 if 20 < len(text) < 500:
                     self._set_if_missing(data, "quote", text)
+                    if not data.get("quote_author"):
+                        next_sib = el.find_next_sibling()
+                        if next_sib:
+                            sib_text = next_sib.get_text(strip=True)
+                            if self._looks_like_author(sib_text):
+                                self._set_if_missing(data, "quote_author", sib_text)
                     return
 
         # 3. <em> or <strong> whose entire text is wrapped in quotation marks
@@ -245,6 +325,12 @@ class HeuristicExtractor(BaseExtractor):
             if text[0] in ('"', '\u201c', '\u2018') and text[-1] in ('"', '\u201d', '\u2019'):
                 cleaned = text.strip('"\u201c\u201d\u2018\u2019')
                 self._set_if_missing(data, "quote", cleaned)
+                if not data.get("quote_author"):
+                    next_sib = el.find_next_sibling()
+                    if next_sib:
+                        sib_text = next_sib.get_text(strip=True)
+                        if self._looks_like_author(sib_text):
+                            self._set_if_missing(data, "quote_author", sib_text)
                 return
 
     # ── Industry ───────────────────────────────────────────────────────────
@@ -273,7 +359,12 @@ class HeuristicExtractor(BaseExtractor):
                     return
 
         date_re = re.compile(
-            r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}\b"
+            r"\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec"
+            r"|januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december"
+            r"|janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre"
+            r")[a-z]*\.?\s+\d{1,2},?\s+\d{4}\b"
+            r"|\b\d{1,2}\s+(?:januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december"
+            r"|janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)\s+\d{4}\b"
             r"|\b\d{4}-\d{2}-\d{2}\b",
             re.I,
         )
@@ -299,6 +390,7 @@ class HeuristicExtractor(BaseExtractor):
             if 2 < len(text) < 40 and not text.startswith("http"):
                 tags.add(text)
 
+        tags = {t for t in tags if t.lower() not in _TAG_NOISE and len(t.split()) <= 6}
         if tags:
             self._set_if_missing(data, "tags", json.dumps(sorted(tags)))
 
@@ -309,6 +401,9 @@ class HeuristicExtractor(BaseExtractor):
             return
         try:
             from dateutil import parser as dp
-            data["publish_date"] = dp.parse(raw, fuzzy=True).date()
+            normalised = raw.lower()
+            for nl, en in _DUTCH_MONTHS.items():
+                normalised = re.sub(r'\b' + re.escape(nl) + r'\b', en, normalised)
+            data["publish_date"] = dp.parse(normalised, fuzzy=True).date()
         except Exception:
             pass

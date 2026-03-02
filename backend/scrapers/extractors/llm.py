@@ -16,6 +16,8 @@ LLM_FIELDS = [
     "solution",
     "results",
     "products_used",
+    "quote",
+    "quote_author",
 ]
 
 SYSTEM_PROMPT = (
@@ -40,6 +42,8 @@ Field rules:
 - solution: 1-3 sentences describing how the vendor/product solved the challenge
 - results: key outcomes, metrics, or benefits achieved (short paragraph or bullet points)
 - products_used: JSON array of specific product or technology names mentioned, e.g. ["GPT-4o", "Azure", "Custom API"]
+- quote: a direct verbatim customer testimonial quote; strip surrounding quotation marks; null if none found
+- quote_author: full name and optionally title/company of the person quoted, e.g. "Bram Lerouge, CEO, Doccle"; null if none found
 
 Case study text (first 8000 chars):
 ---
