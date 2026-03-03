@@ -14,7 +14,7 @@ export function EditCompanyDialog({ company }: { company: Company }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(company.name);
   const [url, setUrl] = useState(company.listing_url);
-  const [fetcherType, setFetcherType] = useState(company.fetcher_type);
+  const [fetcherType, setFetcherType] = useState<"static" | "dynamic" | "stealthy">(company.fetcher_type);
   const [pathPrefix, setPathPrefix] = useState(company.case_path_prefix ?? "");
   const { mutateAsync, isPending, error } = useUpdateCompany();
 
@@ -66,7 +66,7 @@ export function EditCompanyDialog({ company }: { company: Company }) {
           </div>
           <div className="space-y-1">
             <Label>Fetcher type</Label>
-            <Select value={fetcherType} onValueChange={setFetcherType}>
+            <Select value={fetcherType} onValueChange={(v) => setFetcherType(v as "static" | "dynamic" | "stealthy")}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

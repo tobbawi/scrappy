@@ -84,7 +84,7 @@ function EditDialog({ c }: { c: ReferenceCase }) {
     for (const [key, val] of Object.entries(form)) {
       if (key === "tags" && val) {
         // Normalise comma-separated tags back to JSON array
-        const arr = val.split(",").map((t) => t.trim()).filter(Boolean);
+        const arr = val.split(",").map((t: string) => t.trim()).filter(Boolean);
         data.tags = JSON.stringify(arr);
       } else {
         data[key] = val || null;
