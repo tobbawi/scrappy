@@ -1,4 +1,5 @@
 import json
+import os
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session, select
 import httpx
@@ -14,6 +15,9 @@ def get_or_create_settings(session: Session) -> AppSettings:
     settings = session.get(AppSettings, 1)
     if not settings:
         settings = AppSettings()
+        ollama_host = os.environ.get("OLLAMA_HOST")
+        if ollama_host:
+            settings.ollama_base_url = ollama_host
         session.add(settings)
         session.commit()
         session.refresh(settings)
