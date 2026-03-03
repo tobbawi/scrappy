@@ -60,7 +60,17 @@ Extractors run in order. Each extractor only fills fields that are still `None` 
 | 1 | MetaTagExtractor | OG tags, Twitter card tags, `<meta name="date">` |
 | 2 | SchemaOrgExtractor | `<script type="application/ld+json">` (Article, BlogPosting) |
 | 3 | HeuristicExtractor | h1/h2/h3, section label patterns, blockquote, CSS classes, `<em>` quotes, description patterns |
-| 4 | LLMExtractor | Ollama LLM on first 8 000 chars of `raw_text` (auto-detected or configured) |
+| 4 | LLMExtractor | LLM on first 8 000 chars of `raw_text` (Ollama or OpenAI-compatible, auto-detected or configured) |
+
+### Cookie consent banner stripping
+
+Before extractors run, `ExtractionPipeline._strip_cookie_banners(soup)` removes common cookie
+consent overlays from the parsed HTML. This prevents boilerplate text from polluting `raw_text`
+(which feeds LLM extraction) and from causing false industry matches in the heuristic extractor.
+
+Stripped elements:
+- **By ID**: `CybotCookiebotDialog`, `CybotCookiebotDialogBodyUnderlay`, `onetrust-consent-sdk`, `cookie-law-info-bar`
+- **By class pattern**: any element whose class matches `cookie[-_]?(consent|banner|notice|popup|dialog|overlay)` (case-insensitive)
 
 ### HeuristicExtractor section detection
 
@@ -74,8 +84,21 @@ Recognised label groups (English + Dutch + French):
 - **solution**: "the solution", "solution", "our approach", … / "de oplossing", "oplossing", "onze aanpak", … / "la solution", "notre solution", …
 - **results**: "results", "outcomes", "impact", … / "resultaten", "de resultaten", "de cijfers", … / "résultats", "les résultats"
 
-Customer name is also extracted from `og:description` / `og:title` patterns such as
+#### Vendor-prefixed section labels
+
+When `company_name` is provided, the extractor auto-generates `"{company_name} {label}"` variants
+for all single-word core labels. For example, if the vendor is "Formica", headings like
+"Formica solution", "Formica challenge", "Formica oplossing" are automatically recognised.
+This handles sites where case study sections are titled with the vendor name instead of generic labels.
+
+#### Customer name from title patterns
+
+Customer name is extracted from `og:description` / `og:title` patterns such as
 "for [Company]", "[Company]:", "helping [Company]".
+
+Additionally, if `company_name` is set, the extractor checks the title for separator patterns
+like "CustomerName - VendorName" (supporting ` - `, ` | `, ` — `, ` – ` separators). The first
+part that doesn't match the vendor name is used as the customer name.
 
 #### Quote and quote_author detection
 
@@ -117,13 +140,15 @@ Dutch and French month names (`januari`, `février`, `mars`, …) are normalised
 passing to `dateutil.parse`, so dates on Belgian/French pages are correctly parsed. The date
 regex also matches `"15 januari 2024"` and `"mars 2023"` patterns in addition to English formats.
 
-### Ollama auto-detection
+### LLM provider resolution
 
-`detect_ollama()` in `pipeline.py` probes `http://localhost:11434/api/tags` at scrape time.
-If Ollama is running with at least one model loaded, it is used automatically — no manual
-settings configuration required. Preferred models in order: llama3.2, llama3, mistral, phi3, phi, gemma.
+At scrape time, `llm_provider` in AppSettings determines which LLM backend is used:
+- `"ollama"` — uses configured `ollama_base_url` / `ollama_model` / `ollama_timeout`
+- `"openai"` — uses configured `openai_base_url` / `openai_model` / `openai_timeout` (OpenAI-compatible API)
+- `"none"` — falls back to auto-detecting a local Ollama via `detect_ollama()`
 
-If `ollama_enabled=True` in AppSettings, the explicitly configured model/URL/timeout are used instead.
+`detect_ollama()` probes `http://localhost:11434/api/tags`. If Ollama is running with at least
+one model loaded, it is used automatically. Preferred models: llama3.2, llama3, mistral, phi3, phi, gemma.
 
 ### Extracted fields
 

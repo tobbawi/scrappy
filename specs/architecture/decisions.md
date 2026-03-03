@@ -353,3 +353,32 @@ Generic `/api/settings/llm/models` and `/api/settings/llm/test` endpoints accept
 - Frontend shows a provider selector (None / Ollama / OpenAI-compatible) with
   provider-specific config fields.
 - `provider="none"` still falls back to auto-detecting a local Ollama instance.
+
+---
+
+## ADR-018 — Cookie Banner Stripping and Vendor-Prefixed Section Labels
+
+**Date:** 2026-03
+
+**Context:** Sites using Cookiebot (and similar consent managers) render 9 KB+ of cookie
+policy text inside the page HTML. This boilerplate pollutes `raw_text` (hurting LLM extraction
+quality), causes false positive industry matches (e.g. "technology" from "search technology
+partner" in cookie text), and wastes LLM token budget. Separately, some vendors title their
+case study sections as "{VendorName} solution" or "{VendorName} challenge" instead of generic
+labels, which the heuristic extractor didn't recognise.
+
+**Decision:**
+1. `ExtractionPipeline._strip_cookie_banners(soup)` runs before text extraction, removing
+   elements by known IDs (`CybotCookiebotDialog`, `onetrust-consent-sdk`, etc.) and by class
+   pattern matching `cookie[-_]?(consent|banner|notice|popup|dialog|overlay)`.
+2. `HeuristicExtractor.__init__` auto-generates `"{company_name} {label}"` variants for all
+   single-word section labels when `company_name` is provided (e.g. "formica solution").
+3. `HeuristicExtractor._extract_customer_name` checks for "CustomerName - VendorName" title
+   patterns (supporting ` - `, ` | `, ` — `, ` – ` separators).
+
+**Consequences:**
+- `raw_text` is significantly cleaner on Cookiebot sites, improving both heuristic and LLM quality.
+- Industry false positives from cookie/footer text are eliminated.
+- Vendor-specific section headings are matched without per-company heuristic label configuration.
+- Title-based customer name extraction works for sites that use "Customer - Vendor" title patterns.
+- No schema or API changes required; purely scraper-internal.

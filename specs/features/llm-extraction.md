@@ -1,58 +1,62 @@
-# Feature Spec — LLM Extraction (Ollama)
+# Feature Spec — LLM Extraction
 
 ## Overview
 
 Optional LLM-based extraction fills in case fields that structured extractors
-(OG tags, JSON-LD, heuristics) couldn't find. Uses a locally running Ollama instance.
+(OG tags, JSON-LD, heuristics) couldn't find. Supports locally running Ollama
+instances and any OpenAI-compatible inference server (llama.cpp, vLLM, LocalAI, LM Studio).
 
 ---
 
 ## User Stories
 
-### US-1: Enable Ollama extraction
+### US-1: Select LLM provider
 
-**As a user**, I want to turn on LLM-based extraction with my local Ollama,
-**so that** more case fields are automatically populated.
+**As a user**, I want to choose between Ollama, an OpenAI-compatible server, or no LLM,
+**so that** I can use whichever inference backend I have running.
 
 **Acceptance criteria:**
 - Given I navigate to Settings
-- When I toggle "Enable Ollama LLM Extraction" on and save
-- Then future scrape jobs include the LLM extractor as the last pipeline step
-- And only empty fields are passed to the LLM (earlier extractors are not overridden)
+- When I select a provider from the "Provider" dropdown (None / Ollama / OpenAI-compatible)
+- Then the selection is persisted as `llm_provider`
+- And provider-specific configuration fields are shown
+- And future scrape jobs use the selected provider
 
 ---
 
-### US-2: Configure Ollama connection
+### US-2: Configure LLM connection
 
-**As a user**, I want to set the Ollama base URL, model, and timeout.
+**As a user**, I want to set the base URL, model, and timeout for my chosen provider.
 
 **Acceptance criteria:**
-- Given I fill in the base URL (default: http://localhost:11434), model name, and timeout
-- When I save settings
+- Given I have selected a provider
+- When I fill in the base URL, model name, and timeout and save
 - Then those values are persisted and used by the next scrape job
+- And Ollama and OpenAI-compatible settings are stored independently
 
 ---
 
 ### US-3: Pick from available models
 
-**As a user**, I want to see a list of models available in my Ollama instance,
+**As a user**, I want to see a list of models available on my inference server,
 **so that** I don't have to type the model name manually.
 
 **Acceptance criteria:**
-- Given Ollama is reachable at the configured URL
-- When I open the model picker
+- Given the server is reachable at the configured URL
+- When I open the model picker (or click the refresh button)
 - Then a dropdown shows all available models
-- And I can select one to set `ollama_model`
+- And I can select one
+- If the server is unreachable, a text input fallback is shown
 
 ---
 
-### US-4: Test Ollama connection
+### US-4: Test LLM connection
 
-**As a user**, I want to verify that Ollama is reachable and the chosen model is available
+**As a user**, I want to verify that the server is reachable and the chosen model is available
 before running a scrape.
 
 **Acceptance criteria:**
-- Given I click "Test Connection"
+- Given I click "Test connection"
 - Then the UI shows: reachable (yes/no), model available (yes/no), list of available models
 - If unreachable, an error message is shown
 
@@ -64,15 +68,20 @@ before running a scrape.
 - It only fills fields that are still `None` after prior extractors.
 - Input: first 8,000 characters of `raw_text`.
 - Output fields: `customer_name`, `customer_industry`, `customer_country`, `challenge`, `solution`, `results`, `products_used`, `quote`, `quote_author`.
-- Request format: JSON (`format: "json"`) via Ollama `/api/chat`.
-- Handles both clean JSON and markdown-fenced JSON responses.
-- Timeout controlled by `AppSettings.ollama_timeout`.
+- Handles both clean JSON and markdown-fenced JSON responses via `_parse_json()`.
+- Timeout controlled by the provider-specific timeout setting.
 
-## Auto-detection (Embedded Ollama)
+### Provider dispatch
 
-`detect_ollama()` in `pipeline.py` probes `http://localhost:11434/api/tags` at the start of each scrape job.
-If Ollama is reachable with at least one model, it is used automatically — even if `ollama_enabled=False` in settings.
-Explicit settings always override auto-detection when `ollama_enabled=True`.
+`LLMExtractor.__init__` accepts a `provider` parameter (`"ollama"` or `"openai"`).
+`_call_llm()` dispatches to:
+- **Ollama**: `POST {base_url}/api/chat` with `format: "json"`, reads `body.message.content`
+- **OpenAI-compatible**: `POST {base_url}/v1/chat/completions` with `response_format: {"type": "json_object"}`, reads `body.choices[0].message.content`
+
+## Auto-detection (fallback)
+
+When `llm_provider="none"`, `detect_ollama()` in `pipeline.py` probes `http://localhost:11434/api/tags`
+at the start of each scrape job. If Ollama is reachable with at least one model, it is used automatically.
 
 Preferred model selection order: `llama3.2`, `llama3`, `mistral`, `phi3`, `phi`, `gemma`.
 
@@ -80,12 +89,14 @@ Preferred model selection order: `llama3.2`, `llama3`, `mistral`, `phi3`, `phi`,
 
 ## Settings UI
 
-- Toggle switch (enabled / disabled)
-- Base URL input + connectivity status indicator
-- Model dropdown (populated from live Ollama models list, with text input fallback)
-- Timeout slider / input (10–300 seconds)
+- Provider selector dropdown (None / Ollama / OpenAI-compatible)
+- Provider-specific fields shown conditionally:
+  - Base URL input + connectivity status indicator + refresh button
+  - Model dropdown (populated from live model list, with text input fallback)
+  - Timeout input (10–300 seconds)
 - Save button
 - Test Connection button + result panel
+- Info text for OpenAI-compatible: "Works with llama.cpp, vLLM, LocalAI, LM Studio, etc."
 
 ---
 
@@ -93,7 +104,9 @@ Preferred model selection order: `llama3.2`, `llama3`, `mistral`, `phi3`, `phi`,
 
 - `GET /api/settings`
 - `PATCH /api/settings`
-- `GET /api/settings/ollama/models`
-- `POST /api/settings/ollama/test`
+- `GET /api/settings/llm/models?provider=ollama|openai`
+- `POST /api/settings/llm/test?provider=ollama|openai`
+- `GET /api/settings/ollama/models` (legacy alias)
+- `POST /api/settings/ollama/test` (legacy alias)
 
 See [api/settings.md](../api/settings.md).
