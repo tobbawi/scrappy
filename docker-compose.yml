@@ -5,6 +5,8 @@ services:
       - "8000:8000"
     volumes:
       - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
       # Use host Ollama (Metal GPU acceleration on Apple Silicon)
       OLLAMA_HOST: http://host.docker.internal:11434
