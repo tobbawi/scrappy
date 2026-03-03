@@ -6,10 +6,13 @@ services:
     volumes:
       - ./data:/app/data
     environment:
-      OLLAMA_HOST: http://ollama:11434
+      # Use host Ollama (Metal GPU acceleration on Apple Silicon)
+      OLLAMA_HOST: http://host.docker.internal:11434
       CORS_ORIGINS: http://localhost:3000,http://localhost:5173
-    depends_on:
-      - ollama
+    deploy:
+      resources:
+        limits:
+          memory: 2g
 
   frontend:
     build: ./frontend
@@ -17,21 +20,7 @@ services:
       - "3000:3000"
     depends_on:
       - backend
-
-  ollama:
-    image: ollama/ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    # Uncomment for NVIDIA GPU passthrough:
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
-
-volumes:
-  ollama_data:
+    deploy:
+      resources:
+        limits:
+          memory: 128m
