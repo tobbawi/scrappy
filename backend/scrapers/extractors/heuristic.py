@@ -47,7 +47,7 @@ SECTION_LABELS: dict[str, list[str]] = {
         "la solution", "notre solution", "notre approche",
     ],
     "results": [
-        "results", "the results", "outcomes", "the outcomes", "impact",
+        "result", "the result", "results", "the results", "outcomes", "the outcomes", "impact",
         "the impact", "benefits", "key results", "key outcomes", "achievements",
         "numbers", "the numbers", "what we achieved",
         # Dutch
@@ -208,10 +208,23 @@ class HeuristicExtractor(BaseExtractor):
         """Try to extract a customer name from a title or description string."""
         if not text:
             return None
-        # "... for [Company]" at end of string or before punctuation
-        m = re.search(
-            r"\bfor\s+([A-Z][A-Za-z0-9\s&\.\'-]{2,50}?)(?:\s*[,\.\!\?]|$)", text
+        # "[Company]'s ..." — possessive pattern (e.g. "Spire's Mascot")
+        m = re.match(
+            r"^(?:\w+\s+)?([A-Z][A-Za-z0-9&\.\-]+(?:\s+[A-Z][A-Za-z0-9&\.\-]+)?)(?:'s|'s)\s+",
+            text,
         )
+        if m:
+            return m.group(1).strip()
+        # "Helping [Company] [verb]"
+        m = re.search(
+            r"\b[Hh]elping\s+([A-Z][A-Za-z0-9\s&\.]{2,40}?)"
+            r"(?:\s+(?:to|[A-Z][a-z]*(?:e|ing|ify|ise|ize|ld|im|ain|ch))\b|\s+[a-z]|\s*[,\.]|$)",
+            text,
+        )
+        if m:
+            return m.group(1).strip()
+        # "[Company]: description" at start
+        m = re.match(r"^([A-Z0-9][A-Za-z0-9\s&\.]{2,40}):\s+\w", text)
         if m:
             return m.group(1).strip()
         # "How/Why/Inside [Company] verb..."
@@ -222,14 +235,9 @@ class HeuristicExtractor(BaseExtractor):
         )
         if m:
             return m.group(1).strip()
-        # "[Company]: description" at start
-        m = re.match(r"^([A-Z][A-Za-z0-9\s&\.]{2,40}):\s+\w", text)
-        if m:
-            return m.group(1).strip()
-        # "helping [Company]"
+        # "... for [Company]" — consecutive capitalized words after "for"
         m = re.search(
-            r"\bhelping\s+([A-Z][A-Za-z0-9\s&\.]{2,40}?)(?:\s+to\b|\s+[a-z]|\s*[,\.]|$)",
-            text,
+            r"\bfor\s+((?:[A-Z][A-Za-z0-9&\.\'-]*\s*)+?)(?:\s+[a-z]|\s*[,\.\!\?\|]|$)", text
         )
         if m:
             return m.group(1).strip()

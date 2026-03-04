@@ -15,13 +15,9 @@ def get_or_create_settings(session: Session) -> AppSettings:
     settings = session.get(AppSettings, 1)
     if not settings:
         settings = AppSettings()
-        session.add(settings)
-        session.commit()
-        session.refresh(settings)
-    # Always sync Ollama URL from env var (Docker sets this to host.docker.internal)
-    ollama_host = os.environ.get("OLLAMA_HOST")
-    if ollama_host and settings.ollama_base_url != ollama_host:
-        settings.ollama_base_url = ollama_host
+        ollama_host = os.environ.get("OLLAMA_HOST")
+        if ollama_host:
+            settings.ollama_base_url = ollama_host
         session.add(settings)
         session.commit()
         session.refresh(settings)
@@ -50,11 +46,7 @@ def get_settings(session: Session = Depends(get_session)):
 @router.patch("", response_model=SettingsRead)
 def update_settings(data: SettingsUpdate, session: Session = Depends(get_session)):
     settings = get_or_create_settings(session)
-    ollama_host_env = os.environ.get("OLLAMA_HOST")
     for key, value in data.model_dump(exclude_unset=True).items():
-        # Skip ollama_base_url when env var controls it
-        if key == "ollama_base_url" and ollama_host_env:
-            continue
         if key == "scraper_enabled_fields":
             settings.scraper_enabled_fields = json.dumps(value)
         elif key == "scraper_heuristic_labels":
