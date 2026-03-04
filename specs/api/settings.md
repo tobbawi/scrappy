@@ -4,6 +4,10 @@ Base path: `/api/settings`
 
 AppSettings is a singleton (always row id=1). Created on app startup if absent.
 
+When the settings row is first created, if the `OLLAMA_HOST` environment variable is set,
+its value is used as the initial `ollama_base_url` (e.g. `http://host.docker.internal:11434`
+in Docker). After initial creation, the field is fully user-controlled via `PATCH /api/settings`.
+
 ---
 
 ## GET /api/settings

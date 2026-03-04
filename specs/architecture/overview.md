@@ -67,6 +67,27 @@ Browser (localhost:5173)
 └───────────────────────────────────┘
 ```
 
+## Deployment
+
+### Local dev
+```bash
+cd backend && .venv/bin/uvicorn main:app --reload --port 8000
+cd frontend && npm run dev   # proxies /api → :8000
+```
+
+### Docker Compose
+```bash
+docker compose up --build
+# Frontend: http://localhost:3000  (nginx → static + /api proxy)
+# Backend:  http://localhost:8000
+```
+
+Two services: `backend` (Python 3.13 + Playwright) and `frontend` (Node build → nginx).
+Ollama runs natively on the host (not containerized on macOS — no Metal GPU in Docker VM).
+The backend connects to host Ollama via `host.docker.internal:11434`.
+
+See [ADR-019](decisions.md#adr-019--docker-compose-deployment).
+
 ## Key Design Principles
 
 1. **Local-first**: No cloud dependencies; SQLite only, no external database required.
@@ -106,20 +127,25 @@ Browser (localhost:5173)
 
 ```
 scrappy/
+├── docker-compose.yml     # Backend + frontend services
+├── .dockerignore
 ├── backend/
-│   ├── main.py           # App entry, lifespan, CORS, router registration
-│   ├── models.py         # SQLModel table definitions
-│   ├── database.py       # Engine, session dependency
-│   ├── schemas.py        # Pydantic request/response schemas
-│   ├── scheduler.py      # APScheduler setup + weekly job
+│   ├── Dockerfile         # Python 3.13 + Playwright Chromium
+│   ├── main.py            # App entry, lifespan, CORS, router registration
+│   ├── models.py          # SQLModel table definitions
+│   ├── database.py        # Engine, session dependency
+│   ├── schemas.py         # Pydantic request/response schemas
+│   ├── scheduler.py       # APScheduler setup + weekly job
 │   ├── requirements.txt
-│   └── routers/          # companies | cases | scraping | digest | settings
+│   └── routers/           # companies | cases | scraping | digest | settings
 │       └── scrapers/
 │           ├── fetcher.py
 │           ├── listing.py
 │           ├── case.py
 │           └── extractors/   # base | pipeline | meta_tags | schema_org | heuristic | llm
 ├── frontend/
+│   ├── Dockerfile         # Multi-stage: Node build → nginx
+│   ├── nginx.conf         # Static files + /api proxy to backend
 │   └── src/
 │       ├── App.tsx        # Routes
 │       ├── lib/           # api.ts (typed client), utils.ts

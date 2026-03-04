@@ -122,7 +122,8 @@ endpoint returns immediately with a `ScrapeJob` (status=queued); clients poll fo
 **Context:** LLM extraction can fill fields that structured/heuristic extractors miss,
 but Ollama may not be installed on every machine.
 
-**Decision:** Ollama integration is opt-in, controlled by `AppSettings.ollama_enabled`.
+**Decision:** Ollama integration is opt-in, controlled by `AppSettings.llm_provider`
+(`"none"` | `"ollama"` | `"openai"`; see ADR-017).
 Settings (URL, model, timeout) are stored in a singleton DB row and configurable via UI.
 
 **Consequences:**
@@ -382,3 +383,62 @@ labels, which the heuristic extractor didn't recognise.
 - Vendor-specific section headings are matched without per-company heuristic label configuration.
 - Title-based customer name extraction works for sites that use "Customer - Vendor" title patterns.
 - No schema or API changes required; purely scraper-internal.
+
+---
+
+## ADR-019 — Docker Compose Deployment
+
+**Date:** 2026-03
+
+**Context:** Scrappy requires two manually started processes (backend uvicorn + frontend vite dev).
+For repeatable deployment and easier onboarding, a single-command setup is preferred.
+
+**Decision:** Add `docker-compose.yml` with two services:
+- **backend**: `python:3.13-slim` + Playwright Chromium, WORKDIR `/app/backend` (so
+  `Path(__file__).parent.parent / "data"` resolves to `/app/data`), bind mount `./data:/app/data`.
+- **frontend**: Multi-stage build (Node 22 → nginx:alpine), serves static files on port 3000,
+  proxies `/api` to `backend:8000` via `nginx.conf`.
+
+Ollama is **not containerized** on macOS because Docker Desktop runs a Linux VM with no Metal
+GPU access. Instead, `OLLAMA_HOST` env var points to `host.docker.internal:11434` (host Ollama).
+`extra_hosts: host.docker.internal:host-gateway` ensures DNS resolution works.
+
+CORS origins are configurable via `CORS_ORIGINS` env var (default includes `:3000` and `:5173`).
+`OLLAMA_HOST` seeds the initial `ollama_base_url` in settings on first DB creation only;
+the field remains fully editable via the Settings UI afterward.
+
+Memory limits: backend 2 GB, frontend 128 MB (nginx).
+
+**Consequences:**
+- `docker compose up --build` starts the full app.
+- Data persists in `./data/scrappy.db` across restarts.
+- Local dev (`uvicorn` + `npm run dev`) continues to work unchanged.
+- GPU passthrough config is commented out; uncomment for Linux hosts with NVIDIA GPUs.
+- Users must run Ollama natively on macOS for Metal acceleration.
+
+---
+
+## ADR-020 — Customer Name Extraction Pattern Ordering
+
+**Date:** 2026-03
+
+**Context:** Title-based customer name extraction used a single "for [Company]" regex first,
+which caused false matches (e.g. "for B2B Events" instead of "Spire" from "Giving Spire's
+Mascot a Home for B2B Events"). The "helping" pattern also missed Title Case names due to
+case-sensitivity, and the "for" pattern over-captured lowercase words after the company name
+(e.g. "Cronos Europa on a tight deadline" instead of "Cronos Europa").
+
+**Decision:** Reorder and refine `_customer_from_text()` patterns (most specific first):
+1. Possessive (`[Company]'s`) — new pattern
+2. Helping (`Helping [Company] [verb]`) — case-insensitive, stops at common verb suffixes
+3. Colon (`[Company]:`) — now accepts leading digits (e.g. "10maal10")
+4. How/Why (`How [Company] verb`)
+5. For (`for [Company]`) — now captures only consecutive capitalized words, stops at lowercase
+
+Also add "result" / "the result" (singular) to section labels for sites using singular headings.
+
+**Consequences:**
+- Possessive and helping patterns catch company names before the generic "for" pattern can misfire.
+- The "for" pattern no longer captures lowercase action phrases after the company name.
+- Sites using "Result" (singular) as a section heading now have results extracted correctly.
+- No schema or API changes; purely extractor-internal.

@@ -82,7 +82,7 @@ Webflow-built pages where semantic headings are styled `<p>` elements.
 Recognised label groups (English + Dutch + French):
 - **challenge**: "the challenge", "challenge", "the problem", … / "de uitdaging", "uitdaging", "het probleem", "aanleiding", … / "le défi", "défi", "le problème", …
 - **solution**: "the solution", "solution", "our approach", … / "de oplossing", "oplossing", "onze aanpak", … / "la solution", "notre solution", …
-- **results**: "results", "outcomes", "impact", … / "resultaten", "de resultaten", "de cijfers", … / "résultats", "les résultats"
+- **results**: "result", "the result", "results", "outcomes", "impact", … / "resultaten", "de resultaten", "de cijfers", … / "résultats", "les résultats"
 
 #### Vendor-prefixed section labels
 
@@ -93,8 +93,14 @@ This handles sites where case study sections are titled with the vendor name ins
 
 #### Customer name from title patterns
 
-Customer name is extracted from `og:description` / `og:title` patterns such as
-"for [Company]", "[Company]:", "helping [Company]".
+Customer name is extracted from `og:description` / `og:title` using pattern matching,
+tried in order (first match wins):
+
+1. **Possessive**: `"[Company]'s ..."` — e.g. "Spire's Mascot" → "Spire"
+2. **Helping**: `"Helping [Company] [verb]"` — stops at common verb suffixes (`-e`, `-ing`, `-ify`, `-ld`, `-im`, `-ain`, `-ch`) to avoid capturing action words; e.g. "Helping Cronos Europa Build Authority" → "Cronos Europa"
+3. **Colon**: `"[Company]: description"` — e.g. "10maal10: A Premium Brand" → "10maal10"
+4. **How/Why**: `"How/Why [Company] [verb]"` — e.g. "How Acme Used AI" → "Acme"
+5. **For**: `"... for [Company]"` — captures consecutive capitalized words after "for", stops at lowercase words or `| , . ! ?` separators; e.g. "Branding for Shifting Gears | Vendor" → "Shifting Gears"
 
 Additionally, if `company_name` is set, the extractor checks the title for separator patterns
 like "CustomerName - VendorName" (supporting ` - `, ` | `, ` — `, ` – ` separators). The first
